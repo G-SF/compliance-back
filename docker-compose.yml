@@ -1,0 +1,94 @@
+# docker-compose.yml
+#
+# Three services on a shared private network:
+#   api      → the Node.js backend
+#   mongo    → MongoDB 7
+#   redis    → Redis 7 (append-only persistence enabled)
+#
+# Usage:
+#   Start:    docker-compose up --build
+#   Stop:     docker-compose down
+#   Wipe DB:  docker-compose down -v
+
+version: '3.9'
+
+services:
+  # ── API ─────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: backend_api
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      # Use service names as hostnames inside the Docker network
+      MONGO_URI: mongodb://mongo:27017/backend_api
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # ── MongoDB ──────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7-jammy
+    container_name: backend_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    # Porta mapeada ao host para permitir `npm run dev` local
+    # 27018 evita conflito com outros containers Mongo já rodando no host
+    ports:
+      - '27018:27017'
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - backend
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: backend_redis
+    restart: unless-stopped
+    # Enable append-only file persistence so tokens survive container restarts
+    command: redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    # Porta mapeada ao host para permitir `npm run dev` local
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+# ── Named volumes (data persists across container restarts) ──────────────────
+volumes:
+  mongo_data:
+  redis_data:
+
+# ── Isolated network (services can't be reached from outside without port mapping) ─
+networks:
+  backend:
+    driver: bridge
