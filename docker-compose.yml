@@ -13,6 +13,38 @@
 version: '3.9'
 
 services:
+  # ── LLM (Ollama) ─────────────────────────────────────────────────────────────
+  llm:
+    image: ollama/ollama:latest
+    container_name: backend_llm
+    restart: unless-stopped
+    # Override entrypoint to start server + pull model on first boot.
+    # The model is cached in the named volume so subsequent restarts skip the pull.
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        ollama serve &
+        OLLAMA_PID=$$!
+        echo "[llm] Waiting for Ollama to start..."
+        until ollama list > /dev/null 2>&1; do sleep 2; done
+        echo "[llm] Pulling model: ${LLM_MODEL:-mistral}"
+        ollama pull ${LLM_MODEL:-mistral}
+        echo "[llm] Model ready. Server running."
+        wait $$OLLAMA_PID
+    ports:
+      - '11434:11434'
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      # Reports healthy once the model appears in the list
+      test: ['CMD-SHELL', 'ollama list 2>/dev/null | grep -qE "mistral|llama"']
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 300s
+    networks:
+      - backend
+
   # ── API ─────────────────────────────────────────────────────────────────────
   api:
     build:
@@ -35,11 +67,15 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://llm:11434}
+      LLM_MODEL: ${LLM_MODEL:-mistral}
     depends_on:
       mongo:
         condition: service_healthy
       redis:
         condition: service_healthy
+      llm:
+        condition: service_started
     networks:
       - backend
 
@@ -87,6 +123,7 @@ services:
 volumes:
   mongo_data:
   redis_data:
+  ollama_data:
 
 # ── Isolated network (services can't be reached from outside without port mapping) ─
 networks:

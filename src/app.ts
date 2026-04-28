@@ -13,6 +13,7 @@
 
 import express, { Application, Request, Response } from 'express';
 import { authRouter } from './modules/auth/auth.routes';
+import { aiRouter } from './modules/ai/ai.routes';
 import { errorMiddleware } from './shared/middleware/error.middleware';
 import { ApiResponse } from './shared/utils/response.util';
 
@@ -31,6 +32,7 @@ export function createApp(): Application {
 
   // ── Feature routes ──────────────────────────────────────────────────────────
   app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1/ai', aiRouter);
 
   // ── Catch-all 404 ───────────────────────────────────────────────────────────
   app.use((_req: Request, res: Response) => {

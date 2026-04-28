@@ -38,4 +38,9 @@ export const config = {
     port: parseInt(optionalEnv('REDIS_PORT', '6379'), 10),
     password: optionalEnv('REDIS_PASSWORD', ''),
   },
+
+  llm: {
+    baseUrl: optionalEnv('LLM_BASE_URL', 'http://localhost:11434'),
+    model: optionalEnv('LLM_MODEL', 'mistral'),
+  },
 } as const;

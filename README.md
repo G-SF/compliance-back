@@ -12,6 +12,9 @@ Production-ready Node.js + TypeScript backend with JWT authentication, MongoDB, 
 | Cache / Sessions | Redis 7 (ioredis) |
 | Auth | JWT (access + refresh tokens) |
 | Password hashing | bcryptjs |
+| LLM | Ollama (local — mistral / llama3:8b) |
+| File uploads | multer (memory storage) |
+| HTTP client | axios |
 | Containerisation | Docker + docker-compose |
 
 ---
@@ -39,8 +42,11 @@ src/
 │   │   ├── auth.routes.ts
 │   │   └── auth.dto.ts
 │   └── ai/
-│       ├── ai.interface.ts  # IAiService contract (LLaMA 8B ready)
-│       └── ai.service.ts    # Placeholder — swap for real provider
+│       ├── ai.interface.ts  # IAiService contract
+│       ├── ai.service.ts    # Ollama implementation (HTTP → llm:11434)
+│       ├── ai.controller.ts # generate + generate-with-files handlers
+│       ├── ai.routes.ts     # Router + multer file upload config
+│       └── ai.dto.ts        # Input validation
 └── shared/
     ├── middleware/
     │   ├── auth.middleware.ts
@@ -132,6 +138,13 @@ GET /health
 | POST | `/logout` | — | Invalidate refresh token |
 | GET | `/me` | Bearer JWT | Get current user info |
 
+### AI (`/api/v1/ai`)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/generate` | — | Send prompt + context to LLM |
+| POST | `/generate-with-files` | — | Send prompt + context + files to LLM |
+
 #### Register
 
 ```json
@@ -192,19 +205,86 @@ Authorization: Bearer <accessToken>
 
 ---
 
-## AI Integration (Future — LLaMA 8B)
+## AI Integration (LLaMA / Mistral via Ollama)
 
-The `src/modules/ai/` module is a placeholder ready for LLaMA 8B integration.
+The `src/modules/ai/` module connects to a local [Ollama](https://ollama.com) container.
 
-### Options
+### Running with Docker (recommended)
 
-| Option | Description |
+```bash
+# docker-compose starts Ollama and pulls the model automatically
+docker-compose up --build
+```
+
+The `llm` service pulls the model on first start (cached in a named volume).  
+Subsequent starts skip the pull — model is already on disk.
+
+### Running locally (without Docker)
+
+```bash
+# 1. Install Ollama: https://ollama.com/download
+# 2. Start the server
+ollama serve
+
+# 3. Pull a model (one-time)
+ollama pull mistral          # ~4 GB
+# or
+ollama pull llama3:8b        # ~4.7 GB
+
+# 4. Set env vars in .env
+LLM_BASE_URL=http://localhost:11434
+LLM_MODEL=mistral
+```
+
+### Switching models
+
+Change `LLM_MODEL` in your `.env` file to any model available via `ollama list`.  
+The model must be pulled before use.
+
+### Example curl commands
+
+**Simple prompt:**
+```bash
+curl -s -X POST http://localhost:3000/api/v1/ai/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "What is a REST API?", "context": "Answer in 2 sentences."}' | jq
+```
+
+**Prompt + file:**
+```bash
+curl -s -X POST http://localhost:3000/api/v1/ai/generate-with-files \
+  -F "prompt=Summarize this file" \
+  -F "context=Be concise" \
+  -F "files=@./README.md" | jq
+```
+
+### Response format
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "data": {
+    "response": "A REST API is an architectural style...",
+    "model": "mistral"
+  }
+}
+```
+
+### File upload constraints
+
+| Field | Value |
 |---|---|
-| **Ollama** (recommended) | `ollama run llama3`, implement `OllamaAiService` against `POST http://localhost:11434/api/generate` |
-| **llama.cpp server** | Build with `--server`, implement `LlamaCppAiService` against `POST http://localhost:8080/completion` |
-| **Remote endpoint** | Store URL + key in `.env`, implement `RemoteAiService` |
+| Accepted formats | `.txt`, `.json`, `.md` |
+| Max size per file | 5 MB |
+| Multiple files | Yes (`files[]`) |
 
-To activate: implement `IAiService` (see [src/modules/ai/ai.interface.ts](src/modules/ai/ai.interface.ts)) and swap the export in [src/modules/ai/ai.service.ts](src/modules/ai/ai.service.ts).
+---
+
+## AI Integration (Future — swap model)
+
+To use a different model, update `LLM_MODEL` in `.env` and run `ollama pull <model>`.  
+The `IAiService` interface in [src/modules/ai/ai.interface.ts](src/modules/ai/ai.interface.ts) remains stable — swap the implementation in [src/modules/ai/ai.service.ts](src/modules/ai/ai.service.ts) to point at any provider.
 
 ---
 
@@ -224,3 +304,5 @@ See [.env.example](.env.example) for a full reference.
 | `REDIS_HOST` | No | `localhost` | Redis host |
 | `REDIS_PORT` | No | `6379` | Redis port |
 | `REDIS_PASSWORD` | No | `""` | Redis password (if any) |
+| `LLM_BASE_URL` | No | `http://localhost:11434` | Ollama server URL |
+| `LLM_MODEL` | No | `mistral` | Model to use for generation |

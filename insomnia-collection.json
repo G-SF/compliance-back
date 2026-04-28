@@ -42,9 +42,7 @@
       "name": "Health Check",
       "method": "GET",
       "url": "{{ _.base_url }}/health",
-      "headers": [
-        { "name": "Accept", "value": "application/json" }
-      ],
+      "headers": [{ "name": "Accept", "value": "application/json" }],
       "body": {},
       "description": "Retorna status da API. Esperado: { success: true, data: { status: 'ok' } }",
       "metaSortKey": 1
@@ -69,7 +67,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/register",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept",       "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {
         "mimeType": "application/json",
@@ -88,7 +86,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/login",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept",       "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {
         "mimeType": "application/json",
@@ -107,7 +105,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/me",
       "headers": [
         { "name": "Authorization", "value": "Bearer {{ _.access_token }}" },
-        { "name": "Accept",        "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {},
       "description": "Retorna o userId do token autenticado.\n\nRequer: variável `access_token` preenchida no environment.\n\nStatus esperado: 200 OK\nSem token ou token inválido: 401 Unauthorized",
@@ -123,7 +121,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/refresh",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept",       "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {
         "mimeType": "application/json",
@@ -142,7 +140,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/logout",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept",       "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {
         "mimeType": "application/json",
@@ -171,7 +169,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/register",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept",       "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {
         "mimeType": "application/json",
@@ -190,7 +188,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/register",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept",       "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {
         "mimeType": "application/json",
@@ -209,7 +207,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/login",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept",       "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {
         "mimeType": "application/json",
@@ -226,9 +224,7 @@
       "name": "Me — sem token (401)",
       "method": "GET",
       "url": "{{ _.base_url }}/api/v1/auth/me",
-      "headers": [
-        { "name": "Accept", "value": "application/json" }
-      ],
+      "headers": [{ "name": "Accept", "value": "application/json" }],
       "body": {},
       "description": "Acessa rota protegida sem enviar o header Authorization.\n\nStatus esperado: 401 Unauthorized\n{ success: false, error: 'Authorization header missing or malformed' }",
       "metaSortKey": 4
@@ -243,7 +239,7 @@
       "url": "{{ _.base_url }}/api/v1/auth/me",
       "headers": [
         { "name": "Authorization", "value": "Bearer this.is.not.a.valid.jwt" },
-        { "name": "Accept",        "value": "application/json" }
+        { "name": "Accept", "value": "application/json" }
       ],
       "body": {},
       "description": "Token mal-formado ou com assinatura inválida.\n\nStatus esperado: 401 Unauthorized\n{ success: false, error: 'Invalid or expired token' }",
@@ -257,12 +253,72 @@
       "name": "Rota inexistente (404)",
       "method": "GET",
       "url": "{{ _.base_url }}/api/v1/nao-existe",
-      "headers": [
-        { "name": "Accept", "value": "application/json" }
-      ],
+      "headers": [{ "name": "Accept", "value": "application/json" }],
       "body": {},
       "description": "Rota não mapeada — deve cair no handler 404 do app.ts.\n\nStatus esperado: 404 Not Found\n{ success: false, error: 'Route not found' }",
       "metaSortKey": 6
+    },
+
+    {
+      "_id": "fld_ai",
+      "_type": "request_group",
+      "parentId": "wrk_backend_api",
+      "name": "🤖 AI",
+      "description": "Endpoints de geração de texto via LLM local (Ollama)",
+      "environment": {},
+      "metaSortKey": 4
+    },
+
+    {
+      "_id": "req_ai_generate",
+      "_type": "request",
+      "parentId": "fld_ai",
+      "name": "AI - Generate",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/ai/generate",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Accept", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"prompt\": \"Explain what a REST API is in 2 sentences.\",\n  \"context\": \"You are a helpful assistant that gives concise technical explanations.\"\n}"
+      },
+      "description": "Envia um prompt (e contexto opcional) para o LLM local e retorna a resposta gerada.\n\nO campo `context` é opcional — use para instruir o modelo com informações adicionais.\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"mistral\"\n  }\n}\n\n⚠️ O LLM precisa estar rodando (docker-compose up) para este endpoint funcionar.",
+      "metaSortKey": 1
+    },
+
+    {
+      "_id": "req_ai_generate_with_files",
+      "_type": "request",
+      "parentId": "fld_ai",
+      "name": "AI - Generate with Files",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/ai/generate-with-files",
+      "headers": [{ "name": "Accept", "value": "application/json" }],
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "name": "prompt",
+            "value": "Summarize the content of the uploaded file.",
+            "type": "text"
+          },
+          {
+            "name": "context",
+            "value": "You are a summarization assistant.",
+            "type": "text"
+          },
+          {
+            "name": "files",
+            "fileName": "sample.txt",
+            "type": "file",
+            "description": "Attach a .txt, .json, or .md file (max 5 MB)"
+          }
+        ]
+      },
+      "description": "Envia um prompt + arquivos (multipart/form-data) para o LLM.\n\nFormatos suportados: .txt, .json, .md (máx. 5 MB por arquivo).\nO campo `context` é opcional.\nMúltiplos arquivos podem ser enviados usando o campo `files` várias vezes.\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"mistral\"\n  }\n}\n\n⚠️ O LLM precisa estar rodando (docker-compose up) para este endpoint funcionar.",
+      "metaSortKey": 2
     }
   ]
 }
