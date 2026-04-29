@@ -12,10 +12,12 @@
  */
 
 import express, { Application, Request, Response } from 'express';
+import { apiReference } from '@scalar/express-api-reference';
 import { authRouter } from './modules/auth/auth.routes';
 import { aiRouter } from './modules/ai/ai.routes';
 import { errorMiddleware } from './shared/middleware/error.middleware';
 import { ApiResponse } from './shared/utils/response.util';
+import { openApiSpec } from './config/openapi';
 
 export function createApp(): Application {
   const app = express();
@@ -23,6 +25,16 @@ export function createApp(): Application {
   // ── Built-in middleware ─────────────────────────────────────────────────────
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
+
+  // ── API Playground (Scalar) ─────────────────────────────────────────────────
+  // Disponível em: GET /docs
+  app.use(
+    '/docs',
+    apiReference({
+      spec: { content: openApiSpec },
+      theme: 'default',
+    }),
+  );
 
   // ── Health check ────────────────────────────────────────────────────────────
   // Intentionally placed before any auth so load-balancers can reach it freely

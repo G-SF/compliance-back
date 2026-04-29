@@ -8,16 +8,4 @@
 #
 # Instalado via: npm run prepare  (git config core.hooksPath .githooks)
 
-echo "🔄 Atualizando Insomnia collection..."
-
-npx ts-node --transpile-only --project tsconfig.scripts.json scripts/generate-insomnia.ts
-
-if [ $? -ne 0 ]; then
-  echo "❌ Falha ao gerar Insomnia collection — commit cancelado"
-  exit 1
-fi
-
-# Stage automático do arquivo gerado
-git add insomnia-collection.json
-
-echo "✅ Insomnia collection atualizada e incluída no commit"
+echo "✅ Pre-commit OK"
