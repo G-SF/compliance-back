@@ -2,7 +2,8 @@
  * AI Routes
  *
  * POST /generate              — prompt + optional context (JSON body)
- * POST /generate-with-files   — prompt + optional context + files[] (multipart/form-data)
+ * POST /generate-with-files   — file(s) only + optional contractText (core/analyze, no user question)
+ * POST /ask                   — file(s) + required question (freemium, no system pre-prompt)
  */
 
 import { Router } from 'express';
@@ -19,3 +20,4 @@ export const aiRouter = Router();
 
 aiRouter.post('/generate', aiController.generate);
 aiRouter.post('/generate-with-files', upload.array('files'), aiController.generateWithFiles);
+aiRouter.post('/ask', upload.array('files'), aiController.askWithFile);

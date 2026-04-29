@@ -11,7 +11,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { IAiService, AiPromptOptions, AiResponse } from './ai.interface';
+import { IAiService, AiPromptOptions, AiResponse, ContractAnalysis } from './ai.interface';
 import { config } from '../../config';
 import { logger } from '../../shared/utils/logger';
 
@@ -19,9 +19,8 @@ import { logger } from '../../shared/utils/logger';
 const PRICE_INPUT_PER_TOKEN = 0.8 / 1_000_000;
 const PRICE_OUTPUT_PER_TOKEN = 4.0 / 1_000_000;
 
-// max_tokens: 1050 cobre o formato completo com até 7 problemas detalhados (~950 tokens)
-// Claude para naturalmente quando termina — o cap só evita edge cases extremos
-const MAX_OUTPUT_TOKENS_OVERRIDE = 600;
+// max_tokens: 2048 permite resposta_usuario longa (ex: top 10 list) sem truncar
+const MAX_OUTPUT_TOKENS_OVERRIDE = 2048;
 
 class ClaudeAiService implements IAiService {
   private readonly client: Anthropic;
@@ -70,8 +69,23 @@ class ClaudeAiService implements IAiService {
         costUsd: `$${costUsd.toFixed(5)}`,
       });
 
+      let parsed: ContractAnalysis | null = null;
+      if (systemPrompt) {
+        try {
+          // Strip markdown code fences if the model wraps the JSON anyway
+          const clean = text
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```$/i, '')
+            .trim();
+          parsed = JSON.parse(clean) as ContractAnalysis;
+        } catch {
+          logger.warn('[AI] Response is not valid JSON — returning raw text only');
+        }
+      }
+
       return {
         text,
+        parsed,
         model: msg.model,
         latencyMs,
         inputTokens,

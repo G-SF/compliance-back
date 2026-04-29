@@ -1,7 +1,7 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2026-04-29T15:32:26.511Z",
+  "__export_date": "2026-04-29T17:34:53.433Z",
   "__export_source": "compliance-back/scripts/generate-insomnia.ts",
   "resources": [
     {
@@ -232,6 +232,30 @@
       },
       "description": "Envia um prompt + arquivos (multipart/form-data) para análise pelo Claude.\n\nFormatos suportados: .txt, .json, .md (máx. 5 MB por arquivo).\nMúltiplos arquivos podem ser enviados usando o campo `files` várias vezes.\n\n⚠️ O campo `context` foi removido — o sistema já injeta automaticamente um pre-prompt especializado em análise de contratos para pequenas empresas.\n\nSaída no formato:\n  Resumo | Tipo de contrato | Risco geral | Score (0-10)\n  Problemas encontrados | Sugestões práticas | Ação opcional\n\n💰 Custo estimado por request (com arquivo ~500 tokens):\n  Input:  ~1.665 tokens × $0,80/M = $0,00133\n  Output: ~900 tokens  × $4,00/M = $0,00360\n  Total:  ~$0,0049 por request ≈ R$0,028\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"claude-haiku-4-5\",\n    \"usage\": {\n      \"inputTokens\": 1665,\n      \"outputTokens\": 900,\n      \"totalTokens\": 2565,\n      \"costUsd\": 0.00493\n    }\n  }\n}",
       "metaSortKey": 2
+    },
+    {
+      "_id": "req_auto_post_api_v1_ai_ask",
+      "_type": "request",
+      "parentId": "fld_ai",
+      "name": "POST /ask",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/ai/ask",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{}"
+      },
+      "description": "[Auto-gerado] POST /api/v1/ai/ask\n\nStatus esperado: 200 OK",
+      "metaSortKey": 3
     },
     {
       "_id": "req_health_check",

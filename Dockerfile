@@ -9,7 +9,8 @@ WORKDIR /app
 COPY package*.json tsconfig.json ./
 
 # Install all dependencies (including devDeps needed for tsc)
-RUN npm ci
+# --ignore-scripts skips the "prepare" hook (git config) that requires git
+RUN npm ci --ignore-scripts
 
 # Copy source and compile
 COPY src/ ./src/
@@ -23,8 +24,9 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 # Copy only production manifests and install prod deps
+# --ignore-scripts skips the "prepare" hook (git config) that requires git
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy compiled output from the builder stage
 COPY --from=builder /app/dist ./dist

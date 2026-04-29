@@ -8,7 +8,11 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { aiService } from './ai.service';
-import { validateGenerateDto, validateGenerateWithFilesDto } from './ai.dto';
+import {
+  validateGenerateDto,
+  validateGenerateWithFilesDto,
+  validateAskWithFileDto,
+} from './ai.dto';
 import { FILE_ANALYSIS_SYSTEM_PROMPT } from './ai.prompts';
 import { extractTextFromFile, ALLOWED_EXTENSIONS } from './ai.file-parser';
 import { ApiResponse } from '../../shared/utils/response.util';
@@ -108,12 +112,71 @@ export const aiController = {
       const prompt = buildFileUserMessage({
         contractText: dto.contractText,
         fileContents,
-        question: dto.question,
       });
       const result = await aiService.complete({
         prompt,
         systemPrompt: FILE_ANALYSIS_SYSTEM_PROMPT,
       });
+
+      res.json(
+        ApiResponse.success({
+          analysis: result.parsed ?? null,
+          model: result.model,
+          usage: {
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            totalTokens: result.tokensUsed,
+            costUsd: result.costUsd,
+          },
+        }),
+      );
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * POST /ask
+   * Freemium: user sends a file + a question. No system pre-prompt.
+   * Returns the raw model answer (no structured JSON parsing).
+   */
+  async askWithFile(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const dto = validateAskWithFileDto(body);
+
+      const files = req.files as Express.Multer.File[] | undefined;
+      const fileContents: string[] = [];
+
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const ext = '.' + file.originalname.split('.').pop()?.toLowerCase();
+          if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            const err = new Error(
+              `Arquivo "${file.originalname}" não suportado. Permitidos: ${ALLOWED_EXTENSIONS.join(', ')}`,
+            );
+            (err as Error & { statusCode: number }).statusCode = 400;
+            throw err;
+          }
+          fileContents.push(await extractTextFromFile(file.buffer, file.originalname));
+        }
+      }
+
+      if (fileContents.length === 0 && !dto.contractText?.trim()) {
+        const err = new Error(
+          'Envie pelo menos um arquivo (PDF, DOCX, TXT) ou preencha o campo contractText com o texto do contrato',
+        );
+        (err as Error & { statusCode: number }).statusCode = 400;
+        throw err;
+      }
+
+      const prompt = buildFileUserMessage({
+        contractText: dto.contractText,
+        fileContents,
+        question: dto.question,
+      });
+
+      const result = await aiService.complete({ prompt });
 
       res.json(
         ApiResponse.success({
