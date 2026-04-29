@@ -1,8 +1,8 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2026-04-27T00:00:00.000Z",
-  "__export_source": "insomnia.desktop.app:v9",
+  "__export_date": "2026-04-29T02:15:45.989Z",
+  "__export_source": "compliance-back/scripts/generate-insomnia.ts",
   "resources": [
     {
       "_id": "wrk_backend_api",
@@ -11,7 +11,6 @@
       "description": "Collection completa para testar a Backend API (auth, health)",
       "scope": "collection"
     },
-
     {
       "_id": "env_base",
       "_type": "environment",
@@ -25,7 +24,6 @@
       "color": null,
       "isPrivate": false
     },
-
     {
       "_id": "fld_health",
       "_type": "request_group",
@@ -36,19 +34,6 @@
       "metaSortKey": 1
     },
     {
-      "_id": "req_health_check",
-      "_type": "request",
-      "parentId": "fld_health",
-      "name": "Health Check",
-      "method": "GET",
-      "url": "{{ _.base_url }}/health",
-      "headers": [{ "name": "Accept", "value": "application/json" }],
-      "body": {},
-      "description": "Retorna status da API. Esperado: { success: true, data: { status: 'ok' } }",
-      "metaSortKey": 1
-    },
-
-    {
       "_id": "fld_auth",
       "_type": "request_group",
       "parentId": "wrk_backend_api",
@@ -57,99 +42,6 @@
       "environment": {},
       "metaSortKey": 2
     },
-
-    {
-      "_id": "req_register",
-      "_type": "request",
-      "parentId": "fld_auth",
-      "name": "Register",
-      "method": "POST",
-      "url": "{{ _.base_url }}/api/v1/auth/register",
-      "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"email\": \"dev@example.com\",\n  \"password\": \"StrongPass123\"\n}"
-      },
-      "description": "Cria um novo usuário. Retorna o objeto do usuário sem a senha.\n\nStatus esperado: 201 Created",
-      "metaSortKey": 1
-    },
-
-    {
-      "_id": "req_login",
-      "_type": "request",
-      "parentId": "fld_auth",
-      "name": "Login",
-      "method": "POST",
-      "url": "{{ _.base_url }}/api/v1/auth/login",
-      "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"email\": \"dev@example.com\",\n  \"password\": \"StrongPass123\"\n}"
-      },
-      "description": "Faz login e retorna accessToken + refreshToken.\n\n➡️ Copie o accessToken retornado para a variável `access_token` do environment.\n➡️ Copie o refreshToken retornado para a variável `refresh_token`.\n\nStatus esperado: 200 OK",
-      "metaSortKey": 2
-    },
-
-    {
-      "_id": "req_me",
-      "_type": "request",
-      "parentId": "fld_auth",
-      "name": "Me (rota protegida)",
-      "method": "GET",
-      "url": "{{ _.base_url }}/api/v1/auth/me",
-      "headers": [
-        { "name": "Authorization", "value": "Bearer {{ _.access_token }}" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {},
-      "description": "Retorna o userId do token autenticado.\n\nRequer: variável `access_token` preenchida no environment.\n\nStatus esperado: 200 OK\nSem token ou token inválido: 401 Unauthorized",
-      "metaSortKey": 3
-    },
-
-    {
-      "_id": "req_refresh",
-      "_type": "request",
-      "parentId": "fld_auth",
-      "name": "Refresh Token",
-      "method": "POST",
-      "url": "{{ _.base_url }}/api/v1/auth/refresh",
-      "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"refreshToken\": \"{{ _.refresh_token }}\"\n}"
-      },
-      "description": "Rotaciona o par de tokens. O refreshToken enviado é invalidado e um novo par é retornado.\n\n⚠️ Após usar, atualize `access_token` e `refresh_token` no environment.\n\nStatus esperado: 200 OK\nToken inválido/expirado/já usado: 401 Unauthorized",
-      "metaSortKey": 4
-    },
-
-    {
-      "_id": "req_logout",
-      "_type": "request",
-      "parentId": "fld_auth",
-      "name": "Logout",
-      "method": "POST",
-      "url": "{{ _.base_url }}/api/v1/auth/logout",
-      "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"refreshToken\": \"{{ _.refresh_token }}\"\n}"
-      },
-      "description": "Invalida o refreshToken no Redis imediatamente.\n\nStatus esperado: 200 OK\n\n➡️ Após o logout, tentativas de usar refreshToken ou accessToken expirado retornam 401.",
-      "metaSortKey": 5
-    },
-
     {
       "_id": "fld_error_cases",
       "_type": "request_group",
@@ -159,106 +51,6 @@
       "environment": {},
       "metaSortKey": 3
     },
-
-    {
-      "_id": "req_register_duplicate",
-      "_type": "request",
-      "parentId": "fld_error_cases",
-      "name": "Register — email duplicado (409)",
-      "method": "POST",
-      "url": "{{ _.base_url }}/api/v1/auth/register",
-      "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"email\": \"dev@example.com\",\n  \"password\": \"StrongPass123\"\n}"
-      },
-      "description": "Tenta registrar com o mesmo email já cadastrado.\n\nStatus esperado: 409 Conflict\n{ success: false, error: 'Email already in use' }",
-      "metaSortKey": 1
-    },
-
-    {
-      "_id": "req_register_invalid_password",
-      "_type": "request",
-      "parentId": "fld_error_cases",
-      "name": "Register — senha curta (400)",
-      "method": "POST",
-      "url": "{{ _.base_url }}/api/v1/auth/register",
-      "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"email\": \"new@example.com\",\n  \"password\": \"123\"\n}"
-      },
-      "description": "Senha com menos de 8 caracteres.\n\nStatus esperado: 400 Bad Request\n{ success: false, error: 'Password must be at least 8 characters' }",
-      "metaSortKey": 2
-    },
-
-    {
-      "_id": "req_login_wrong_password",
-      "_type": "request",
-      "parentId": "fld_error_cases",
-      "name": "Login — senha errada (401)",
-      "method": "POST",
-      "url": "{{ _.base_url }}/api/v1/auth/login",
-      "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {
-        "mimeType": "application/json",
-        "text": "{\n  \"email\": \"dev@example.com\",\n  \"password\": \"WrongPassword\"\n}"
-      },
-      "description": "Credenciais inválidas.\n\nStatus esperado: 401 Unauthorized\n{ success: false, error: 'Invalid credentials' }",
-      "metaSortKey": 3
-    },
-
-    {
-      "_id": "req_me_no_token",
-      "_type": "request",
-      "parentId": "fld_error_cases",
-      "name": "Me — sem token (401)",
-      "method": "GET",
-      "url": "{{ _.base_url }}/api/v1/auth/me",
-      "headers": [{ "name": "Accept", "value": "application/json" }],
-      "body": {},
-      "description": "Acessa rota protegida sem enviar o header Authorization.\n\nStatus esperado: 401 Unauthorized\n{ success: false, error: 'Authorization header missing or malformed' }",
-      "metaSortKey": 4
-    },
-
-    {
-      "_id": "req_me_bad_token",
-      "_type": "request",
-      "parentId": "fld_error_cases",
-      "name": "Me — token inválido (401)",
-      "method": "GET",
-      "url": "{{ _.base_url }}/api/v1/auth/me",
-      "headers": [
-        { "name": "Authorization", "value": "Bearer this.is.not.a.valid.jwt" },
-        { "name": "Accept", "value": "application/json" }
-      ],
-      "body": {},
-      "description": "Token mal-formado ou com assinatura inválida.\n\nStatus esperado: 401 Unauthorized\n{ success: false, error: 'Invalid or expired token' }",
-      "metaSortKey": 5
-    },
-
-    {
-      "_id": "req_not_found",
-      "_type": "request",
-      "parentId": "fld_error_cases",
-      "name": "Rota inexistente (404)",
-      "method": "GET",
-      "url": "{{ _.base_url }}/api/v1/nao-existe",
-      "headers": [{ "name": "Accept", "value": "application/json" }],
-      "body": {},
-      "description": "Rota não mapeada — deve cair no handler 404 do app.ts.\n\nStatus esperado: 404 Not Found\n{ success: false, error: 'Route not found' }",
-      "metaSortKey": 6
-    },
-
     {
       "_id": "fld_ai",
       "_type": "request_group",
@@ -268,7 +60,123 @@
       "environment": {},
       "metaSortKey": 4
     },
-
+    {
+      "_id": "req_register_invalid_password",
+      "_type": "request",
+      "parentId": "fld_error_cases",
+      "name": "Register — senha curta (400)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/auth/register",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"new@example.com\",\n  \"password\": \"123\"\n}"
+      },
+      "description": "Senha com menos de 8 caracteres.\n\nStatus esperado: 400 Bad Request\n{ success: false, error: 'Password must be at least 8 characters' }",
+      "metaSortKey": 2
+    },
+    {
+      "_id": "req_login_wrong_password",
+      "_type": "request",
+      "parentId": "fld_error_cases",
+      "name": "Login — senha errada (401)",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/auth/login",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"dev@example.com\",\n  \"password\": \"WrongPassword\"\n}"
+      },
+      "description": "Credenciais inválidas.\n\nStatus esperado: 401 Unauthorized\n{ success: false, error: 'Invalid credentials' }",
+      "metaSortKey": 3
+    },
+    {
+      "_id": "req_refresh",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Refresh Token",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/auth/refresh",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refreshToken\": \"{{ _.refresh_token }}\"\n}"
+      },
+      "description": "Rotaciona o par de tokens. O refreshToken enviado é invalidado e um novo par é retornado.\n\n⚠️ Após usar, atualize `access_token` e `refresh_token` no environment.\n\nStatus esperado: 200 OK\nToken inválido/expirado/já usado: 401 Unauthorized",
+      "metaSortKey": 4
+    },
+    {
+      "_id": "req_logout",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Logout",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/v1/auth/logout",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"refreshToken\": \"{{ _.refresh_token }}\"\n}"
+      },
+      "description": "Invalida o refreshToken no Redis imediatamente.\n\nStatus esperado: 200 OK\n\n➡️ Após o logout, tentativas de usar refreshToken ou accessToken expirado retornam 401.",
+      "metaSortKey": 5
+    },
+    {
+      "_id": "req_me_bad_token",
+      "_type": "request",
+      "parentId": "fld_error_cases",
+      "name": "Me — token inválido (401)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/auth/me",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer this.is.not.a.valid.jwt"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {},
+      "description": "Token mal-formado ou com assinatura inválida.\n\nStatus esperado: 401 Unauthorized\n{ success: false, error: 'Invalid or expired token' }",
+      "metaSortKey": 5
+    },
     {
       "_id": "req_ai_generate",
       "_type": "request",
@@ -277,8 +185,14 @@
       "method": "POST",
       "url": "{{ _.base_url }}/api/v1/ai/generate",
       "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "Accept", "value": "application/json" }
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
       ],
       "body": {
         "mimeType": "application/json",
@@ -287,7 +201,6 @@
       "description": "Envia um prompt (e contexto opcional) para o Claude e retorna a resposta gerada.\n\nO campo `context` é opcional — use para fornecer informações adicionais ao modelo (ex: instruções de comportamento, dados de contexto).\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"claude-haiku-4-5\",\n    \"usage\": {\n      \"inputTokens\": 120,\n      \"outputTokens\": 80,\n      \"totalTokens\": 200,\n      \"costUsd\": 0.00042\n    }\n  }\n}",
       "metaSortKey": 1
     },
-
     {
       "_id": "req_ai_generate_with_files",
       "_type": "request",
@@ -295,7 +208,12 @@
       "name": "AI - Generate with Files",
       "method": "POST",
       "url": "{{ _.base_url }}/api/v1/ai/generate-with-files",
-      "headers": [{ "name": "Accept", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
       "body": {
         "mimeType": "multipart/form-data",
         "params": [
@@ -314,6 +232,40 @@
       },
       "description": "Envia um prompt + arquivos (multipart/form-data) para análise pelo Claude.\n\nFormatos suportados: .txt, .json, .md (máx. 5 MB por arquivo).\nMúltiplos arquivos podem ser enviados usando o campo `files` várias vezes.\n\n⚠️ O campo `context` foi removido — o sistema já injeta automaticamente um pre-prompt especializado em análise de contratos para pequenas empresas.\n\nSaída no formato:\n  Resumo | Tipo de contrato | Risco geral | Score (0-10)\n  Problemas encontrados | Sugestões práticas | Ação opcional\n\n💰 Custo estimado por request (com arquivo ~500 tokens):\n  Input:  ~1.665 tokens × $0,80/M = $0,00133\n  Output: ~900 tokens  × $4,00/M = $0,00360\n  Total:  ~$0,0049 por request ≈ R$0,028\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"claude-haiku-4-5\",\n    \"usage\": {\n      \"inputTokens\": 1665,\n      \"outputTokens\": 900,\n      \"totalTokens\": 2565,\n      \"costUsd\": 0.00493\n    }\n  }\n}",
       "metaSortKey": 2
+    },
+    {
+      "_id": "req_health_check",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Health Check",
+      "method": "GET",
+      "url": "{{ _.base_url }}/health",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {},
+      "description": "Retorna status da API. Esperado: { success: true, data: { status: 'ok' } }",
+      "metaSortKey": 1
+    },
+    {
+      "_id": "req_not_found",
+      "_type": "request",
+      "parentId": "fld_error_cases",
+      "name": "Rota inexistente (404)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/v1/nao-existe",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": {},
+      "description": "Rota não mapeada — deve cair no handler 404 do app.ts.\n\nStatus esperado: 404 Not Found\n{ success: false, error: 'Route not found' }",
+      "metaSortKey": 6
     }
   ]
 }
