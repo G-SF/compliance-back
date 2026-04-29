@@ -2,22 +2,23 @@
  * OpenAPI 3.0 Specification
  *
  * Served by Scalar at GET /docs
- * Descreve todos os endpoints públicos e autenticados da API.
  */
 
 export const openApiSpec = {
   openapi: '3.0.3',
   info: {
     title: 'Compliance Backend API',
-    version: '1.0.0',
+    version: '2.0.0',
     description:
-      'API de análise de documentos de compliance com IA. ' +
-      'Endpoints de autenticação JWT e análise de contratos via Claude.',
+      'API de analise de documentos de compliance com IA. ' +
+      'Autenticacao JWT com RBAC (user / admin). ' +
+      'Historico de analises por usuario.',
   },
   servers: [
     { url: 'http://localhost:3000', description: 'Local (dev)' },
     { url: 'http://localhost:3001', description: 'Local alternativo' },
   ],
+  security: [{ bearerAuth: [] }],
   components: {
     securitySchemes: {
       bearerAuth: {
@@ -28,7 +29,6 @@ export const openApiSpec = {
       },
     },
     schemas: {
-      // ── Auth ────────────────────────────────────────────────────────────────
       RegisterRequest: {
         type: 'object',
         required: ['email', 'password'],
@@ -48,16 +48,12 @@ export const openApiSpec = {
       RefreshTokenRequest: {
         type: 'object',
         required: ['refreshToken'],
-        properties: {
-          refreshToken: { type: 'string', example: 'eyJhbGci...' },
-        },
+        properties: { refreshToken: { type: 'string', example: 'eyJhbGci...' } },
       },
       LogoutRequest: {
         type: 'object',
         required: ['refreshToken'],
-        properties: {
-          refreshToken: { type: 'string', example: 'eyJhbGci...' },
-        },
+        properties: { refreshToken: { type: 'string', example: 'eyJhbGci...' } },
       },
       AuthResponse: {
         type: 'object',
@@ -68,13 +64,6 @@ export const openApiSpec = {
             properties: {
               accessToken: { type: 'string' },
               refreshToken: { type: 'string' },
-              user: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  email: { type: 'string' },
-                },
-              },
             },
           },
         },
@@ -88,24 +77,22 @@ export const openApiSpec = {
             properties: {
               id: { type: 'string' },
               email: { type: 'string' },
+              role: { type: 'string', enum: ['user', 'admin'] },
             },
           },
         },
       },
-      // ── AI ──────────────────────────────────────────────────────────────────
+      PromoteRequest: {
+        type: 'object',
+        required: ['role'],
+        properties: { role: { type: 'string', enum: ['user', 'admin'], example: 'admin' } },
+      },
       GenerateRequest: {
         type: 'object',
         required: ['prompt'],
         properties: {
-          prompt: {
-            type: 'string',
-            example: 'Analise as cláusulas de rescisão do contrato a seguir.',
-          },
-          context: {
-            type: 'string',
-            description: 'Contexto adicional opcional enviado ao modelo',
-            example: 'Contrato de prestação de serviços de TI...',
-          },
+          prompt: { type: 'string', example: 'Analise as clausulas de rescisao.' },
+          context: { type: 'string' },
         },
       },
       GenerateResponse: {
@@ -115,7 +102,197 @@ export const openApiSpec = {
           data: {
             type: 'object',
             properties: {
-              result: { type: 'string', description: 'Resposta gerada pelo modelo' },
+              analysis: { type: 'object', nullable: true },
+              response: { type: 'string' },
+              model: { type: 'string' },
+              usage: {
+                type: 'object',
+                properties: {
+                  inputTokens: { type: 'integer' },
+                  outputTokens: { type: 'integer' },
+                  totalTokens: { type: 'integer' },
+                  costUsd: { type: 'number' },
+                },
+              },
+            },
+          },
+        },
+      },
+      GenerateWithFilesResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: {
+            type: 'object',
+            properties: {
+              analysis: {
+                type: 'object',
+                nullable: true,
+                description: 'Analise estruturada (problemas, sugestoes, risco)',
+              },
+              documentId: {
+                type: 'string',
+                example: '6634a1b2c3d4e5f6a7b8c9d0',
+                description: 'ID do DocumentRecord — usar em /document-analysis',
+              },
+              analysisId: {
+                type: 'string',
+                example: '6634a1b2c3d4e5f6a7b8c9d1',
+                description: 'ID do Analysis — usar em /document-analysis/generate-patches',
+              },
+              model: { type: 'string' },
+              usage: {
+                type: 'object',
+                properties: {
+                  inputTokens: { type: 'integer' },
+                  outputTokens: { type: 'integer' },
+                  totalTokens: { type: 'integer' },
+                  costUsd: { type: 'number' },
+                },
+              },
+            },
+          },
+        },
+      },
+      DocumentPatch: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string', example: '6634a1b2c3d4e5f6a7b8c9d2' },
+          documentId: { type: 'string' },
+          analysisId: { type: 'string', nullable: true },
+          trecho_exato: { type: 'string', description: 'Trecho verbatim do documento original' },
+          problema: { type: 'string', description: 'Descricao do problema em pt-BR' },
+          rewrite: { type: 'string', description: 'Substituto cirurgico para trecho_exato' },
+          needs_context: { type: 'boolean' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      GeneratePatchesRequest: {
+        type: 'object',
+        required: ['documentId', 'analysisId'],
+        properties: {
+          documentId: {
+            type: 'string',
+            example: '6634a1b2c3d4e5f6a7b8c9d0',
+            description: 'Retornado por /ai/generate-with-files',
+          },
+          analysisId: {
+            type: 'string',
+            example: '6634a1b2c3d4e5f6a7b8c9d1',
+            description: 'Retornado por /ai/generate-with-files',
+          },
+        },
+      },
+      GeneratePatchesResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: {
+            type: 'object',
+            properties: {
+              documentId: { type: 'string' },
+              analysisId: { type: 'string' },
+              fromCache: {
+                type: 'boolean',
+                description: 'true = patches ja existiam, IA nao foi chamada',
+              },
+              totalPatches: { type: 'integer' },
+              patches: { type: 'array', items: { $ref: '#/components/schemas/DocumentPatch' } },
+              usage: {
+                nullable: true,
+                type: 'object',
+                properties: {
+                  inputTokens: { type: 'integer' },
+                  outputTokens: { type: 'integer' },
+                  costUsd: { type: 'number' },
+                },
+              },
+            },
+          },
+        },
+      },
+      CorrectDocumentRequest: {
+        type: 'object',
+        properties: {
+          issueIds: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'IDs dos patches a aplicar. Omitir para aplicar todos.',
+            example: ['6634a1b2c3d4e5f6a7b8c9d2'],
+          },
+        },
+      },
+      CorrectDocumentResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: {
+            type: 'object',
+            properties: {
+              documentId: { type: 'string' },
+              correctedText: {
+                type: 'string',
+                description: 'Texto completo do documento corrigido',
+              },
+              metrics: {
+                type: 'object',
+                properties: {
+                  issuesApplied: { type: 'integer' },
+                  issuesSkipped: {
+                    type: 'integer',
+                    description: 'Patches cujo trecho_exato nao foi encontrado',
+                  },
+                },
+              },
+              appliedIssueIds: { type: 'array', items: { type: 'string' } },
+              skippedIssueIds: { type: 'array', items: { type: 'string' } },
+            },
+          },
+        },
+      },
+      AnalysisSummary: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          userId: { type: 'string' },
+          fileName: { type: 'string', nullable: true, example: 'Contrato_Agencia.pdf' },
+          fileExtension: { type: 'string', nullable: true, example: '.pdf' },
+          analysisType: { type: 'string', enum: ['generate-with-files', 'ask'] },
+          status: { type: 'string', enum: ['completed', 'error'] },
+          riskLevel: { type: 'string', nullable: true, enum: ['baixo', 'medio', 'alto'] },
+          riskScore: { type: 'number', nullable: true, example: 7 },
+          model: { type: 'string' },
+          costUsd: { type: 'number' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      AnalysisDetail: {
+        allOf: [
+          { $ref: '#/components/schemas/AnalysisSummary' },
+          {
+            type: 'object',
+            properties: {
+              analysis: { type: 'object', nullable: true },
+              rawResponse: { type: 'string' },
+              inputTokens: { type: 'integer' },
+              outputTokens: { type: 'integer' },
+              errorMessage: { type: 'string', nullable: true },
+            },
+          },
+        ],
+      },
+      HistoryPage: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          data: {
+            type: 'object',
+            properties: {
+              items: { type: 'array', items: { $ref: '#/components/schemas/AnalysisSummary' } },
+              total: { type: 'integer' },
+              page: { type: 'integer' },
+              limit: { type: 'integer' },
+              totalPages: { type: 'integer' },
             },
           },
         },
@@ -124,49 +301,26 @@ export const openApiSpec = {
         type: 'object',
         properties: {
           success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'Mensagem de erro' },
-          statusCode: { type: 'integer', example: 400 },
+          message: { type: 'string' },
+          statusCode: { type: 'integer' },
         },
       },
     },
   },
   paths: {
-    // ── Health ───────────────────────────────────────────────────────────────
     '/health': {
       get: {
         tags: ['System'],
         summary: 'Health check',
-        description: 'Verifica se a API está no ar.',
-        responses: {
-          '200': {
-            description: 'API operacional',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean', example: true },
-                    data: {
-                      type: 'object',
-                      properties: {
-                        status: { type: 'string', example: 'ok' },
-                        timestamp: { type: 'string', format: 'date-time' },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        security: [],
+        responses: { '200': { description: 'API operacional' } },
       },
     },
-
-    // ── Auth ─────────────────────────────────────────────────────────────────
     '/api/v1/auth/register': {
       post: {
         tags: ['Auth'],
-        summary: 'Cadastrar usuário',
+        summary: 'Cadastrar usuario (primeiro vira admin)',
+        security: [],
         requestBody: {
           required: true,
           content: {
@@ -175,21 +329,13 @@ export const openApiSpec = {
         },
         responses: {
           '201': {
-            description: 'Usuário criado — retorna tokens JWT',
+            description: 'Usuario criado',
             content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/AuthResponse' },
-              },
-            },
-          },
-          '400': {
-            description: 'Dados inválidos',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+              'application/json': { schema: { $ref: '#/components/schemas/AuthResponse' } },
             },
           },
           '409': {
-            description: 'Email já cadastrado',
+            description: 'Email ja cadastrado',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },
@@ -201,6 +347,7 @@ export const openApiSpec = {
       post: {
         tags: ['Auth'],
         summary: 'Login',
+        security: [],
         requestBody: {
           required: true,
           content: {
@@ -209,13 +356,13 @@ export const openApiSpec = {
         },
         responses: {
           '200': {
-            description: 'Login bem-sucedido — retorna tokens JWT',
+            description: 'Tokens JWT',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/AuthResponse' } },
             },
           },
           '401': {
-            description: 'Credenciais inválidas',
+            description: 'Credenciais invalidas',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },
@@ -227,6 +374,7 @@ export const openApiSpec = {
       post: {
         tags: ['Auth'],
         summary: 'Renovar access token',
+        security: [],
         requestBody: {
           required: true,
           content: {
@@ -235,13 +383,13 @@ export const openApiSpec = {
         },
         responses: {
           '200': {
-            description: 'Novo par de tokens emitido',
+            description: 'Novo par de tokens',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/AuthResponse' } },
             },
           },
           '401': {
-            description: 'Refresh token inválido ou expirado',
+            description: 'Refresh token invalido',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },
@@ -252,38 +400,30 @@ export const openApiSpec = {
     '/api/v1/auth/logout': {
       post: {
         tags: ['Auth'],
-        summary: 'Logout (revoga refresh token)',
+        summary: 'Logout',
+        security: [],
         requestBody: {
           required: true,
           content: {
             'application/json': { schema: { $ref: '#/components/schemas/LogoutRequest' } },
           },
         },
-        responses: {
-          '200': { description: 'Logout realizado com sucesso' },
-          '401': {
-            description: 'Token inválido',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
-            },
-          },
-        },
+        responses: { '200': { description: 'Logout realizado' } },
       },
     },
     '/api/v1/auth/me': {
       get: {
         tags: ['Auth'],
-        summary: 'Dados do usuário autenticado',
-        security: [{ bearerAuth: [] }],
+        summary: 'Perfil do usuario autenticado (email + role)',
         responses: {
           '200': {
-            description: 'Perfil do usuário',
+            description: 'Perfil',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/MeResponse' } },
             },
           },
           '401': {
-            description: 'Não autenticado',
+            description: 'Nao autenticado',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },
@@ -291,14 +431,43 @@ export const openApiSpec = {
         },
       },
     },
-
-    // ── AI ───────────────────────────────────────────────────────────────────
+    '/api/v1/auth/promote/{userId}': {
+      patch: {
+        tags: ['Auth � Admin'],
+        summary: 'Alterar role de um usuario (admin only)',
+        parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/PromoteRequest' } },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Role atualizado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/MeResponse' } },
+            },
+          },
+          '403': {
+            description: 'Permissao negada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '404': {
+            description: 'Usuario nao encontrado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
     '/api/v1/ai/generate': {
       post: {
         tags: ['AI'],
-        summary: 'Gerar análise via prompt + contexto (JSON)',
-        description:
-          'Envia um prompt de texto com contexto opcional. Ideal para prompts programáticos.',
+        summary: 'Prompt livre com contexto opcional',
         requestBody: {
           required: true,
           content: {
@@ -307,13 +476,13 @@ export const openApiSpec = {
         },
         responses: {
           '200': {
-            description: 'Análise gerada',
+            description: 'Resposta gerada',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/GenerateResponse' } },
             },
           },
-          '400': {
-            description: 'Prompt ausente ou inválido',
+          '401': {
+            description: 'Nao autenticado',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },
@@ -324,10 +493,11 @@ export const openApiSpec = {
     '/api/v1/ai/generate-with-files': {
       post: {
         tags: ['AI'],
-        summary: 'Analisar arquivo(s) — análise completa (core)',
+        summary: 'Analise completa de arquivo(s) — salva no historico e cria DocumentRecord',
         description:
-          'Recebe um ou mais arquivos (PDF, DOCX, TXT) e executa análise de compliance ' +
-          'guiada pelo system prompt. Opcionalmente aceita `contractText` como fallback de texto.',
+          'Analisa o contrato e retorna a analise estruturada (problemas, sugestoes, risco). ' +
+          'Tambem cria um **DocumentRecord** com o texto original e retorna `documentId` e `analysisId`, ' +
+          'necessarios para gerar e aplicar patches em `/api/v1/document-analysis`.',
         requestBody: {
           required: true,
           content: {
@@ -338,12 +508,9 @@ export const openApiSpec = {
                   files: {
                     type: 'array',
                     items: { type: 'string', format: 'binary' },
-                    description: 'Arquivos PDF, DOCX ou TXT (máx. 10 MB cada)',
+                    description: 'PDF, DOCX ou TXT (max 10 MB)',
                   },
-                  contractText: {
-                    type: 'string',
-                    description: 'Texto do contrato como alternativa ao upload',
-                  },
+                  contractText: { type: 'string' },
                 },
               },
             },
@@ -351,13 +518,15 @@ export const openApiSpec = {
         },
         responses: {
           '200': {
-            description: 'Análise de compliance gerada',
+            description: 'Analise estruturada + documentId + analysisId',
             content: {
-              'application/json': { schema: { $ref: '#/components/schemas/GenerateResponse' } },
+              'application/json': {
+                schema: { $ref: '#/components/schemas/GenerateWithFilesResponse' },
+              },
             },
           },
-          '400': {
-            description: 'Nenhum arquivo ou texto enviado',
+          '401': {
+            description: 'Nao autenticado',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },
@@ -368,10 +537,7 @@ export const openApiSpec = {
     '/api/v1/ai/ask': {
       post: {
         tags: ['AI'],
-        summary: 'Pergunta livre sobre arquivo (freemium)',
-        description:
-          'Recebe arquivo(s) + uma pergunta específica do usuário. ' +
-          'Sem system prompt de compliance — o modelo responde livremente.',
+        summary: 'Pergunta livre sobre arquivo � salva no historico',
         requestBody: {
           required: true,
           content: {
@@ -380,20 +546,9 @@ export const openApiSpec = {
                 type: 'object',
                 required: ['question'],
                 properties: {
-                  files: {
-                    type: 'array',
-                    items: { type: 'string', format: 'binary' },
-                    description: 'Arquivos PDF, DOCX ou TXT (máx. 10 MB cada)',
-                  },
-                  question: {
-                    type: 'string',
-                    description: 'Pergunta que o usuário quer fazer sobre o documento',
-                    example: 'Quais são as cláusulas de rescisão?',
-                  },
-                  contractText: {
-                    type: 'string',
-                    description: 'Texto do contrato como alternativa ao upload',
-                  },
+                  files: { type: 'array', items: { type: 'string', format: 'binary' } },
+                  question: { type: 'string', example: 'Quais sao as clausulas de rescisao?' },
+                  contractText: { type: 'string' },
                 },
               },
             },
@@ -401,13 +556,288 @@ export const openApiSpec = {
         },
         responses: {
           '200': {
-            description: 'Resposta à pergunta gerada',
+            description: 'Resposta a pergunta',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/GenerateResponse' } },
             },
           },
-          '400': {
-            description: 'Pergunta ausente ou sem conteúdo',
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/history': {
+      get: {
+        tags: ['History'],
+        summary: 'Listar historico do usuario autenticado',
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, maximum: 100 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista paginada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/HistoryPage' } },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/history/{id}': {
+      get: {
+        tags: ['History'],
+        summary: 'Detalhes completos de uma analise',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Analise detalhada',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/AnalysisDetail' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '404': {
+            description: 'Analise nao encontrada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/document-analysis/generate-patches': {
+      post: {
+        tags: ['Document Analysis'],
+        summary: 'Gerar patches cirurgicos a partir de uma analise existente',
+        description:
+          'Usa os `problemas` e `sugestoes` da analise ja realizada em `/ai/generate-with-files` ' +
+          'para localizar trechos exatos no documento original e gerar rewrites pontuais. ' +
+          'Faz apenas **uma chamada barata** a IA (sem re-analisar o documento). ' +
+          'Chamadas subsequentes com os mesmos IDs retornam do cache sem custo.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/GeneratePatchesRequest' } },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Lista de patches para revisao',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/GeneratePatchesResponse' },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '404': {
+            description: 'Document ou Analysis nao encontrado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '422': {
+            description: 'Analysis nao possui dados estruturados',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/document-analysis/correct/{documentId}': {
+      post: {
+        tags: ['Document Analysis'],
+        summary: 'Aplicar patches e obter documento corrigido',
+        description:
+          'Aplica os patches selecionados (ou todos) ao texto original do documento ' +
+          'e retorna o texto corrigido. Apenas trechos com `trecho_exato` encontrado verbatim sao substituidos.',
+        parameters: [
+          {
+            name: 'documentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'Retornado por /ai/generate-with-files',
+          },
+        ],
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/CorrectDocumentRequest' } },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Documento corrigido',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CorrectDocumentResponse' },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '404': {
+            description: 'Documento nao encontrado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/document-analysis/{documentId}/download': {
+      get: {
+        tags: ['Document Analysis'],
+        summary: 'Baixar documento corrigido como arquivo .txt',
+        description:
+          'Aplica os patches ao texto original e devolve o arquivo pronto para download. ' +
+          'Passe `issueIds` como query param separados por virgula para aplicar apenas patches especificos; ' +
+          'omita para aplicar todos. O nome do arquivo e derivado do upload original.',
+        parameters: [
+          {
+            name: 'documentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+          },
+          {
+            name: 'issueIds',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'IDs dos patches separados por virgula. Ex: id1,id2,id3',
+            example: '6634a1b2c3d4e5f6a7b8c9d2,6634a1b2c3d4e5f6a7b8c9d3',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Arquivo .txt com o documento corrigido',
+            headers: {
+              'Content-Disposition': {
+                schema: {
+                  type: 'string',
+                  example: 'attachment; filename="contrato-corrigido.txt"',
+                },
+              },
+            },
+            content: { 'text/plain': { schema: { type: 'string' } } },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '404': {
+            description: 'Documento nao encontrado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/document-analysis/{documentId}/issues': {
+      get: {
+        tags: ['Document Analysis'],
+        summary: 'Listar todos os patches de um documento',
+        parameters: [
+          {
+            name: 'documentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'Retornado por /ai/generate-with-files',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista de patches',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/GeneratePatchesResponse' },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '404': {
+            description: 'Documento nao encontrado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/history/admin/all': {
+      get: {
+        tags: ['History � Admin'],
+        summary: 'Listar analises de TODOS os usuarios (admin only)',
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, maximum: 100 } },
+          {
+            name: 'userId',
+            in: 'query',
+            schema: { type: 'string' },
+            description: 'Filtrar por userId especifico',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista de todas as analises',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/HistoryPage' } },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '403': {
+            description: 'Permissao negada',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },

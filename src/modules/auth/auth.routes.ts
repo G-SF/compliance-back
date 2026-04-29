@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { authController } from './auth.controller';
 import { authMiddleware } from '../../shared/middleware/auth.middleware';
+import { requireRole } from '../../shared/middleware/role.middleware';
 
 export const authRouter = Router();
 
@@ -19,3 +20,6 @@ authRouter.post('/logout', authController.logout);
 
 // Protected
 authRouter.get('/me', authMiddleware, authController.me);
+
+// Admin only
+authRouter.patch('/promote/:userId', authMiddleware, requireRole('admin'), authController.promote);

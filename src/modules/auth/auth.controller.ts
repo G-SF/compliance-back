@@ -9,6 +9,8 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 import { validateRegisterDto, validateLoginDto, validateRefreshTokenDto } from './auth.dto';
 import { ApiResponse } from '../../shared/utils/response.util';
+import { AuthenticatedRequest } from '../../shared/middleware/auth.middleware';
+import { UserRole } from './models/user.model';
 
 export const authController = {
   async register(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -52,13 +54,37 @@ export const authController = {
   },
 
   /**
-   * Example of a protected route — requires authMiddleware on the router.
-   * Returns the authenticated user's ID from the JWT payload.
+   * GET /me — returns authenticated user's profile (email + role)
    */
   async me(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      // req.userId is attached by authMiddleware
-      res.json(ApiResponse.success({ userId: (req as Request & { userId?: string }).userId }));
+      const { userId } = req as AuthenticatedRequest;
+      const user = await authService.findById(userId);
+      if (!user) {
+        res.status(404).json(ApiResponse.error('User not found', 404));
+        return;
+      }
+      res.json(ApiResponse.success({ id: user._id, email: user.email, role: user.role }));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * PATCH /promote/:userId — admin only, changes another user's role
+   */
+  async promote(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId: targetId } = req.params as { userId: string };
+      const { role } = req.body as { role: unknown };
+
+      if (role !== 'user' && role !== 'admin') {
+        res.status(400).json(ApiResponse.error('role must be "user" or "admin"', 400));
+        return;
+      }
+
+      const user = await authService.promoteUser(targetId, role as UserRole);
+      res.json(ApiResponse.success({ id: user._id, email: user.email, role: user.role }));
     } catch (err) {
       next(err);
     }

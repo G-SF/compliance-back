@@ -4,18 +4,18 @@ Production-ready Node.js + TypeScript backend with JWT authentication, MongoDB, 
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Runtime | Node.js 20 + TypeScript 5 |
-| Framework | Express 4 |
-| Database | MongoDB 7 (Mongoose) |
-| Cache / Sessions | Redis 7 (ioredis) |
-| Auth | JWT (access + refresh tokens) |
-| Password hashing | bcryptjs |
-| LLM | Ollama (local — mistral / llama3:8b) |
-| File uploads | multer (memory storage) |
-| HTTP client | axios |
-| Containerisation | Docker + docker-compose |
+| Layer            | Technology                           |
+| ---------------- | ------------------------------------ |
+| Runtime          | Node.js 20 + TypeScript 5            |
+| Framework        | Express 4                            |
+| Database         | MongoDB 7 (Mongoose)                 |
+| Cache / Sessions | Redis 7 (ioredis)                    |
+| Auth             | JWT (access + refresh tokens)        |
+| Password hashing | bcryptjs                             |
+| LLM              | Ollama (local — mistral / llama3:8b) |
+| File uploads     | multer (memory storage)              |
+| HTTP client      | axios                                |
+| Containerisation | Docker + docker-compose              |
 
 ---
 
@@ -130,20 +130,20 @@ GET /health
 
 ### Auth (`/api/v1/auth`)
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/register` | — | Create a new account |
-| POST | `/login` | — | Login, receive token pair |
-| POST | `/refresh` | — | Rotate refresh token |
-| POST | `/logout` | — | Invalidate refresh token |
-| GET | `/me` | Bearer JWT | Get current user info |
+| Method | Path        | Auth       | Description               |
+| ------ | ----------- | ---------- | ------------------------- |
+| POST   | `/register` | —          | Create a new account      |
+| POST   | `/login`    | —          | Login, receive token pair |
+| POST   | `/refresh`  | —          | Rotate refresh token      |
+| POST   | `/logout`   | —          | Invalidate refresh token  |
+| GET    | `/me`       | Bearer JWT | Get current user info     |
 
 ### AI (`/api/v1/ai`)
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/generate` | — | Send prompt + context to LLM |
-| POST | `/generate-with-files` | — | Send prompt + context + files to LLM |
+| Method | Path                   | Auth | Description                          |
+| ------ | ---------------------- | ---- | ------------------------------------ |
+| POST   | `/generate`            | —    | Send prompt + context to LLM         |
+| POST   | `/generate-with-files` | —    | Send prompt + context + files to LLM |
 
 #### Register
 
@@ -166,6 +166,7 @@ POST /api/v1/auth/login
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -244,6 +245,7 @@ The model must be pulled before use.
 ### Example curl commands
 
 **Simple prompt:**
+
 ```bash
 curl -s -X POST http://localhost:3000/api/v1/ai/generate \
   -H "Content-Type: application/json" \
@@ -251,6 +253,7 @@ curl -s -X POST http://localhost:3000/api/v1/ai/generate \
 ```
 
 **Prompt + file:**
+
 ```bash
 curl -s -X POST http://localhost:3000/api/v1/ai/generate-with-files \
   -F "prompt=Summarize this file" \
@@ -273,11 +276,11 @@ curl -s -X POST http://localhost:3000/api/v1/ai/generate-with-files \
 
 ### File upload constraints
 
-| Field | Value |
-|---|---|
-| Accepted formats | `.txt`, `.json`, `.md` |
-| Max size per file | 5 MB |
-| Multiple files | Yes (`files[]`) |
+| Field             | Value                  |
+| ----------------- | ---------------------- |
+| Accepted formats  | `.txt`, `.json`, `.md` |
+| Max size per file | 5 MB                   |
+| Multiple files    | Yes (`files[]`)        |
 
 ---
 
@@ -292,17 +295,17 @@ The `IAiService` interface in [src/modules/ai/ai.interface.ts](src/modules/ai/ai
 
 See [.env.example](.env.example) for a full reference.
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `PORT` | No | `3000` | HTTP port |
-| `NODE_ENV` | No | `development` | `development` or `production` |
-| `JWT_SECRET` | **Yes** | — | Access token signing secret |
-| `JWT_EXPIRES_IN` | No | `15m` | Access token lifetime |
-| `JWT_REFRESH_SECRET` | **Yes** | — | Refresh token signing secret |
-| `JWT_REFRESH_EXPIRES_IN` | No | `7d` | Refresh token lifetime |
-| `MONGO_URI` | **Yes** | — | MongoDB connection string |
-| `REDIS_HOST` | No | `localhost` | Redis host |
-| `REDIS_PORT` | No | `6379` | Redis port |
-| `REDIS_PASSWORD` | No | `""` | Redis password (if any) |
-| `LLM_BASE_URL` | No | `http://localhost:11434` | Ollama server URL |
-| `LLM_MODEL` | No | `mistral` | Model to use for generation |
+| Variable                 | Required | Default                  | Description                   |
+| ------------------------ | -------- | ------------------------ | ----------------------------- |
+| `PORT`                   | No       | `3000`                   | HTTP port                     |
+| `NODE_ENV`               | No       | `development`            | `development` or `production` |
+| `JWT_SECRET`             | **Yes**  | —                        | Access token signing secret   |
+| `JWT_EXPIRES_IN`         | No       | `15m`                    | Access token lifetime         |
+| `JWT_REFRESH_SECRET`     | **Yes**  | —                        | Refresh token signing secret  |
+| `JWT_REFRESH_EXPIRES_IN` | No       | `7d`                     | Refresh token lifetime        |
+| `MONGO_URI`              | **Yes**  | —                        | MongoDB connection string     |
+| `REDIS_HOST`             | No       | `localhost`              | Redis host                    |
+| `REDIS_PORT`             | No       | `6379`                   | Redis port                    |
+| `REDIS_PASSWORD`         | No       | `""`                     | Redis password (if any)       |
+| `LLM_BASE_URL`           | No       | `http://localhost:11434` | Ollama server URL             |
+| `LLM_MODEL`              | No       | `mistral`                | Model to use for generation   |

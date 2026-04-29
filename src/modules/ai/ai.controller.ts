@@ -7,6 +7,8 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
+import { Types } from 'mongoose';
 import { aiService } from './ai.service';
 import {
   validateGenerateDto,
@@ -16,6 +18,10 @@ import {
 import { FILE_ANALYSIS_SYSTEM_PROMPT } from './ai.prompts';
 import { extractTextFromFile, ALLOWED_EXTENSIONS } from './ai.file-parser';
 import { ApiResponse } from '../../shared/utils/response.util';
+import { AnalysisModel } from '../history/analysis.model';
+import { DocumentRecordModel } from '../document-analysis/models/document-record.model';
+import { AuthenticatedRequest } from '../../shared/middleware/auth.middleware';
+import { logger } from '../../shared/utils/logger';
 
 /**
  * Builds the user message for file-based requests.
@@ -118,9 +124,60 @@ export const aiController = {
         systemPrompt: FILE_ANALYSIS_SYSTEM_PROMPT,
       });
 
+      // ── Persist DocumentRecord (upsert by hash) so the correction flow
+      //    can load the original text later without re-uploading the file.
+      const { userId } = req as AuthenticatedRequest;
+      const rawDocumentText = [dto.contractText?.trim(), ...fileContents]
+        .filter((t): t is string => Boolean(t))
+        .join('\n\n');
+      const docHash = crypto.createHash('sha256').update(rawDocumentText, 'utf8').digest('hex');
+
+      const primaryFile = files && files.length > 0 ? files[0] : null;
+      const rawExt = primaryFile?.originalname.split('.').pop()?.toLowerCase() ?? null;
+
+      const docRecord = await DocumentRecordModel.findOneAndUpdate(
+        { userId: new Types.ObjectId(userId), hash: docHash },
+        {
+          $setOnInsert: {
+            userId: new Types.ObjectId(userId),
+            fileName: primaryFile?.originalname ?? null,
+            originalText: rawDocumentText,
+            hash: docHash,
+          },
+        },
+        { upsert: true, new: true },
+      );
+
+      // Pre-generate analysisId so we can return it before the non-blocking DB write
+      const analysisObjectId = new Types.ObjectId();
+
+      // Persist to history (non-blocking — never fail the request if save fails)
+      AnalysisModel.create({
+        _id: analysisObjectId,
+        userId,
+        documentRecordId: docRecord._id,
+        fileName: primaryFile?.originalname ?? null,
+        fileExtension: rawExt ? `.${rawExt}` : null,
+        analysisType: 'generate-with-files',
+        status: 'completed',
+        analysis: result.parsed ?? null,
+        rawResponse: result.text,
+        riskLevel: result.parsed?.risco?.nivel ?? null,
+        riskScore: result.parsed?.risco?.score ?? null,
+        aiModel: result.model,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        costUsd: result.costUsd,
+        errorMessage: null,
+      }).catch((err: unknown) => {
+        logger.warn('[AI] Failed to save analysis to history', { error: err });
+      });
+
       res.json(
         ApiResponse.success({
           analysis: result.parsed ?? null,
+          documentId: docRecord._id.toString(),
+          analysisId: analysisObjectId.toString(),
           model: result.model,
           usage: {
             inputTokens: result.inputTokens,
@@ -177,6 +234,29 @@ export const aiController = {
       });
 
       const result = await aiService.complete({ prompt });
+
+      // Persist to history (non-blocking)
+      const { userId } = req as AuthenticatedRequest;
+      const primaryFile = files && files.length > 0 ? files[0] : null;
+      const rawExt = primaryFile?.originalname.split('.').pop()?.toLowerCase() ?? null;
+      AnalysisModel.create({
+        userId,
+        fileName: primaryFile?.originalname ?? null,
+        fileExtension: rawExt ? `.${rawExt}` : null,
+        analysisType: 'ask',
+        status: 'completed',
+        analysis: null,
+        rawResponse: result.text,
+        riskLevel: null,
+        riskScore: null,
+        aiModel: result.model,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        costUsd: result.costUsd,
+        errorMessage: null,
+      }).catch(() => {
+        /* ignore save errors */
+      });
 
       res.json(
         ApiResponse.success({

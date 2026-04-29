@@ -16,7 +16,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { UserModel, IUser } from './models/user.model';
+import { UserModel, IUser, UserRole } from './models/user.model';
 import { redisService } from '../../infra/redis/redis.service';
 import { config } from '../../config';
 import { RegisterDto, LoginDto } from './auth.dto';
@@ -47,8 +47,12 @@ export class AuthService {
       throw Object.assign(new Error('Email already in use'), { statusCode: 409 });
     }
 
+    // First user ever registered becomes admin (bootstrap)
+    const count = await UserModel.countDocuments();
+    const role: UserRole = count === 0 ? 'admin' : 'user';
+
     const hashed = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const user = await UserModel.create({ email: dto.email, password: hashed });
+    const user = await UserModel.create({ email: dto.email, password: hashed, role });
 
     return user;
   }
@@ -65,7 +69,7 @@ export class AuthService {
       throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
     }
 
-    return this.generateTokens(user._id.toString());
+    return this.generateTokens(user._id.toString(), user.role);
   }
 
   async refresh(incomingRefreshToken: string): Promise<AuthTokens> {
@@ -88,7 +92,11 @@ export class AuthService {
     // Rotate: delete the old token before issuing a new pair
     await redisService.del(key);
 
-    return this.generateTokens(payload.userId);
+    // Fetch current role from DB to keep it accurate after potential promotions
+    const user = await UserModel.findById(payload.userId).select('role');
+    const role: UserRole = (user?.role as UserRole) ?? 'user';
+
+    return this.generateTokens(payload.userId, role);
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -103,14 +111,14 @@ export class AuthService {
     }
   }
 
-  private generateTokens(userId: string): AuthTokens {
+  private generateTokens(userId: string, role: UserRole): AuthTokens {
     const tokenId = uuidv4();
 
-    const accessToken = jwt.sign({ userId }, config.jwt.secret, {
+    const accessToken = jwt.sign({ userId, role }, config.jwt.secret, {
       expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'],
     });
 
-    const refreshToken = jwt.sign({ userId, tokenId }, config.jwt.refreshSecret, {
+    const refreshToken = jwt.sign({ userId, tokenId, role }, config.jwt.refreshSecret, {
       expiresIn: config.jwt.refreshExpiresIn as jwt.SignOptions['expiresIn'],
     });
 
@@ -122,6 +130,22 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
+  }
+
+  async promoteUser(targetUserId: string, role: UserRole): Promise<IUser> {
+    const user = await UserModel.findByIdAndUpdate(
+      targetUserId,
+      { role },
+      { new: true, runValidators: true },
+    );
+    if (!user) {
+      throw Object.assign(new Error('User not found'), { statusCode: 404 });
+    }
+    return user;
+  }
+
+  async findById(userId: string): Promise<IUser | null> {
+    return UserModel.findById(userId);
   }
 }
 

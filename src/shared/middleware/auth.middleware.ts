@@ -10,10 +10,12 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { ApiResponse } from '../utils/response.util';
+import { UserRole } from '../../modules/auth/models/user.model';
 
-// Extend Express Request to carry the authenticated user's ID
+// Extend Express Request to carry the authenticated user's ID and role
 export interface AuthenticatedRequest extends Request {
   userId: string;
+  userRole: UserRole;
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -27,8 +29,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   const token = authHeader.slice(7); // Remove "Bearer " prefix
 
   try {
-    const payload = jwt.verify(token, config.jwt.secret) as { userId: string };
+    const payload = jwt.verify(token, config.jwt.secret) as { userId: string; role: UserRole };
     (req as AuthenticatedRequest).userId = payload.userId;
+    (req as AuthenticatedRequest).userRole = payload.role ?? 'user';
     next();
   } catch {
     res.status(401).json(ApiResponse.error('Invalid or expired token', 401));

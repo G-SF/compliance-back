@@ -7,9 +7,12 @@
 
 import { Schema, model, Document } from 'mongoose';
 
+export type UserRole = 'user' | 'admin';
+
 export interface IUser extends Document {
   email: string;
   password: string;
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +31,11 @@ const userSchema = new Schema<IUser>(
       required: true,
       // Never return the hashed password in API responses
       select: false,
+    },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
     },
   },
   {

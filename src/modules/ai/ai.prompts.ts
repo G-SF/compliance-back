@@ -37,11 +37,9 @@ The JSON must follow this exact schema:
     }
   ],
   "sugestoes": [
-    "sugestoes": [
     "<1 suggestion = 1 risk. Create a separate item for each identified risk>",
     "<do not combine multiple actions into a single item>",
     "<list items in order of importance (highest risk first)>"
-    ]
   ],
 }
 
