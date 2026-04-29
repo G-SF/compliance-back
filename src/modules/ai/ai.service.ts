@@ -1,94 +1,119 @@
 /**
- * AI Service — Ollama Implementation
+ * AI Service — Anthropic Claude Implementation
  *
- * Sends prompts to a locally running Ollama instance via HTTP.
- * Handles timeouts, basic retry logic, and structured error responses.
+ * Sends prompts to the Claude API using the official Anthropic SDK.
+ * Handles structured errors and exposes usage metrics per request.
  *
  * Configuration (via environment variables / config):
- *   LLM_BASE_URL  — defaults to http://localhost:11434
- *   LLM_MODEL     — defaults to "mistral"
+ *   ANTHROPIC_API_KEY — required
+ *   CLAUDE_MODEL      — defaults to "claude-haiku-4-5"
+ *   CLAUDE_MAX_TOKENS — defaults to 1200 (fits the contract analysis format)
  */
 
-import axios, { AxiosError } from 'axios';
+import Anthropic from '@anthropic-ai/sdk';
 import { IAiService, AiPromptOptions, AiResponse } from './ai.interface';
 import { config } from '../../config';
 import { logger } from '../../shared/utils/logger';
 
-const MAX_RETRIES = 2;
-const TIMEOUT_MS = 120_000; // 120 s — generation can be slow on first request
+// Claude Haiku 4.5 pricing (USD per token)
+const PRICE_INPUT_PER_TOKEN = 0.8 / 1_000_000;
+const PRICE_OUTPUT_PER_TOKEN = 4.0 / 1_000_000;
 
-interface OllamaGenerateResponse {
-  model: string;
-  response: string;
-  done: boolean;
-}
+// max_tokens: 1050 cobre o formato completo com até 7 problemas detalhados (~950 tokens)
+// Claude para naturalmente quando termina — o cap só evita edge cases extremos
+const MAX_OUTPUT_TOKENS_OVERRIDE = 600;
 
-class OllamaAiService implements IAiService {
-  private readonly baseUrl: string;
+class ClaudeAiService implements IAiService {
+  private readonly client: Anthropic;
   private readonly model: string;
 
   constructor() {
-    this.baseUrl = config.llm.baseUrl;
-    this.model = config.llm.model;
+    // The SDK picks up ANTHROPIC_API_KEY from env automatically,
+    // but we pass it explicitly for clarity and testability.
+    this.client = new Anthropic({ apiKey: config.claude.apiKey });
+    this.model = config.claude.model;
   }
 
   async complete(options: AiPromptOptions): Promise<AiResponse> {
-    const { prompt } = options;
+    const { prompt, systemPrompt } = options;
     const startTime = Date.now();
 
-    let lastError: unknown;
+    try {
+      logger.info('[AI] Sending request to Claude', { model: this.model });
 
-    for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
-      try {
-        logger.info('[AI] Sending request to Ollama', { model: this.model, attempt });
+      const msg = await this.client.messages.create({
+        model: this.model,
+        max_tokens: Math.min(config.claude.maxTokens, MAX_OUTPUT_TOKENS_OVERRIDE),
+        // temperature: 0 = respostas determinísticas e consistentes
+        // Ideal para análise factual — elimina variação entre chamadas
+        // Não usar top_p junto com temperature (Anthropic recomenda um ou outro)
+        temperature: 0,
+        ...(systemPrompt ? { system: systemPrompt } : {}),
+        messages: [{ role: 'user', content: prompt }],
+      });
 
-        const res = await axios.post<OllamaGenerateResponse>(
-          `${this.baseUrl}/api/generate`,
-          { model: this.model, prompt, stream: false },
-          { timeout: TIMEOUT_MS },
-        );
+      const latencyMs = Date.now() - startTime;
+      const text = msg.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map(block => block.text)
+        .join('');
+      const inputTokens = msg.usage.input_tokens;
+      const outputTokens = msg.usage.output_tokens;
+      const tokensUsed = inputTokens + outputTokens;
+      const costUsd = inputTokens * PRICE_INPUT_PER_TOKEN + outputTokens * PRICE_OUTPUT_PER_TOKEN;
 
-        const latencyMs = Date.now() - startTime;
-        logger.info('[AI] Response received', { latencyMs, model: res.data.model });
+      logger.info('[AI] Response received', {
+        latencyMs,
+        model: msg.model,
+        inputTokens,
+        outputTokens,
+        costUsd: `$${costUsd.toFixed(5)}`,
+      });
 
-        return {
-          text: res.data.response,
-          model: res.data.model,
-          latencyMs,
-        };
-      } catch (err) {
-        lastError = err;
+      return {
+        text,
+        model: msg.model,
+        latencyMs,
+        inputTokens,
+        outputTokens,
+        tokensUsed,
+        costUsd,
+      };
+    } catch (err) {
+      if (err instanceof Anthropic.APIError) {
+        logger.error('[AI] Claude API error', { status: err.status, message: err.message });
 
-        const isRetryable =
-          err instanceof AxiosError &&
-          (!err.response || err.response.status >= 500 || err.code === 'ECONNABORTED');
+        if (err.status === 429) {
+          const e = new Error('Rate limit exceeded. Please try again in a moment.');
+          (e as Error & { statusCode: number }).statusCode = 429;
+          throw e;
+        }
 
-        if (!isRetryable || attempt > MAX_RETRIES) break;
+        if (err.status === 401) {
+          const e = new Error('Invalid Claude API key. Check ANTHROPIC_API_KEY.');
+          (e as Error & { statusCode: number }).statusCode = 500;
+          throw e;
+        }
 
-        logger.warn('[AI] Request failed, retrying...', { attempt });
-        // Short back-off before retry
-        await new Promise(r => setTimeout(r, 1000 * attempt));
+        if (err.status >= 500) {
+          const e = new Error('Claude service is temporarily unavailable.');
+          (e as Error & { statusCode: number }).statusCode = 503;
+          throw e;
+        }
       }
-    }
 
-    // Surface a clean error to the controller
-    if (lastError instanceof AxiosError && !lastError.response) {
-      const err = new Error('LLM service is unavailable. Please try again later.');
-      (err as Error & { statusCode: number }).statusCode = 503;
       throw err;
     }
-
-    throw lastError;
   }
 
   async isAvailable(): Promise<boolean> {
     try {
-      const res = await axios.get(`${this.baseUrl}/api/tags`, { timeout: 5_000 });
-      return res.status === 200;
+      await this.client.models.list();
+      return true;
     } catch {
       return false;
     }
   }
 }
 
-export const aiService = new OllamaAiService();
+export const aiService = new ClaudeAiService();

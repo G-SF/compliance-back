@@ -39,8 +39,9 @@ export const config = {
     password: optionalEnv('REDIS_PASSWORD', ''),
   },
 
-  llm: {
-    baseUrl: optionalEnv('LLM_BASE_URL', 'http://localhost:11434'),
-    model: optionalEnv('LLM_MODEL', 'mistral'),
+  claude: {
+    apiKey: requireEnv('ANTHROPIC_API_KEY'),
+    model: optionalEnv('CLAUDE_MODEL', 'claude-haiku-4-5'),
+    maxTokens: parseInt(optionalEnv('CLAUDE_MAX_TOKENS', '1200'), 10),
   },
 } as const;

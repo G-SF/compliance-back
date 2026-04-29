@@ -1,0 +1,55 @@
+CONTRATO DE PRESTAÇÃO DE SERVIÇOS
+
+CONTRATANTE:
+Razão Social: TechNova Soluções Digitais LTDA
+CNPJ: 32.456.789/0001-10
+Endereço: Rua XV de Novembro, 1234, Curitiba - PR
+
+CONTRATADO:
+Nome: Lucas Andrade
+CPF: 123.456.789-00
+Endereço: Rua das Flores, 567, Curitiba - PR
+
+As partes acima identificadas têm entre si justo e contratado o seguinte:
+
+CLÁUSULA 1 – OBJETO
+O presente contrato tem como objeto a prestação de serviços de desenvolvimento e manutenção de sistema web, incluindo backend, frontend e integrações com APIs de terceiros.
+
+CLÁUSULA 2 – PRAZO
+O prazo deste contrato é de 6 (seis) meses, iniciando em 01/05/2026, podendo ser renovado automaticamente por iguais períodos caso não haja manifestação contrária.
+
+CLÁUSULA 3 – VALOR E FORMA DE PAGAMENTO
+O CONTRATANTE pagará ao CONTRATADO o valor mensal de R$ 5.000,00 (cinco mil reais), mediante transferência bancária até o dia 10 de cada mês.
+
+Parágrafo único: Não há previsão de multa por atraso no pagamento.
+
+CLÁUSULA 4 – OBRIGAÇÕES DO CONTRATADO
+O CONTRATADO deverá executar os serviços com qualidade técnica, respeitando prazos acordados verbalmente com o CONTRATANTE.
+
+CLÁUSULA 5 – OBRIGAÇÕES DO CONTRATANTE
+O CONTRATANTE deverá fornecer todas as informações necessárias para execução dos serviços.
+
+CLÁUSULA 6 – RESCISÃO
+Este contrato poderá ser rescindido por qualquer uma das partes, a qualquer momento, sem necessidade de justificativa ou aviso prévio.
+
+CLÁUSULA 7 – CONFIDENCIALIDADE
+As partes concordam em manter sigilo sobre informações trocadas, sem prazo definido para tal obrigação.
+
+CLÁUSULA 8 – PROPRIEDADE INTELECTUAL
+Todo o código desenvolvido será de propriedade do CONTRATANTE, independentemente de pagamento integral dos serviços.
+
+CLÁUSULA 9 – RESPONSABILIDADE
+O CONTRATADO não se responsabiliza por falhas decorrentes de terceiros, incluindo serviços externos e APIs.
+
+CLÁUSULA 10 – FORO
+Fica eleito o foro da comarca de São Paulo - SP para dirimir quaisquer dúvidas oriundas deste contrato.
+
+E por estarem assim justos e contratados, firmam o presente instrumento.
+
+Curitiba, 01 de maio de 2026.
+
+______________________________
+CONTRATANTE
+
+______________________________
+CONTRATADO

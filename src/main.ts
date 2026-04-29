@@ -34,6 +34,11 @@ async function bootstrap() {
     logger.info(`Server running on port ${config.port} [${config.nodeEnv}]`);
   });
 
+  // LLM requests podem demorar vários minutos — desabilita os timeouts do Node
+  server.headersTimeout = 0;
+  server.requestTimeout = 0;
+  server.timeout = 0;
+
   // Graceful shutdown — ensures in-flight requests finish before disconnect
   const gracefulShutdown = async (signal: string) => {
     logger.info(`${signal} received. Shutting down gracefully...`);

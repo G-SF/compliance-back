@@ -8,7 +8,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { aiService } from './ai.service';
-import { validateGenerateDto } from './ai.dto';
+import { validateGenerateDto, validateGenerateWithFilesDto } from './ai.dto';
+import { FILE_ANALYSIS_SYSTEM_PROMPT } from './ai.prompts';
 import { ApiResponse } from '../../shared/utils/response.util';
 
 const ALLOWED_EXTENSIONS = ['.txt', '.json', '.md'];
@@ -49,6 +50,12 @@ export const aiController = {
         ApiResponse.success({
           response: result.text,
           model: result.model,
+          usage: {
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            totalTokens: result.tokensUsed,
+            costUsd: result.costUsd,
+          },
         }),
       );
     } catch (err) {
@@ -59,7 +66,7 @@ export const aiController = {
   async generateWithFiles(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const body = req.body as Record<string, unknown>;
-      const dto = validateGenerateDto(body);
+      const dto = validateGenerateWithFilesDto(body);
 
       const files = req.files as Express.Multer.File[] | undefined;
 
@@ -87,13 +94,22 @@ export const aiController = {
         }
       }
 
-      const prompt = buildPrompt(dto.prompt, dto.context, fileContents);
-      const result = await aiService.complete({ prompt });
+      const prompt = buildPrompt(dto.prompt, undefined, fileContents);
+      const result = await aiService.complete({
+        prompt,
+        systemPrompt: FILE_ANALYSIS_SYSTEM_PROMPT,
+      });
 
       res.json(
         ApiResponse.success({
           response: result.text,
           model: result.model,
+          usage: {
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            totalTokens: result.tokensUsed,
+            costUsd: result.costUsd,
+          },
         }),
       );
     } catch (err) {

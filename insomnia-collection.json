@@ -264,7 +264,7 @@
       "_type": "request_group",
       "parentId": "wrk_backend_api",
       "name": "🤖 AI",
-      "description": "Endpoints de geração de texto via LLM local (Ollama)",
+      "description": "Endpoints de geração de texto via Claude AI (Anthropic)",
       "environment": {},
       "metaSortKey": 4
     },
@@ -284,7 +284,7 @@
         "mimeType": "application/json",
         "text": "{\n  \"prompt\": \"Explain what a REST API is in 2 sentences.\",\n  \"context\": \"You are a helpful assistant that gives concise technical explanations.\"\n}"
       },
-      "description": "Envia um prompt (e contexto opcional) para o LLM local e retorna a resposta gerada.\n\nO campo `context` é opcional — use para instruir o modelo com informações adicionais.\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"mistral\"\n  }\n}\n\n⚠️ O LLM precisa estar rodando (docker-compose up) para este endpoint funcionar.",
+      "description": "Envia um prompt (e contexto opcional) para o Claude e retorna a resposta gerada.\n\nO campo `context` é opcional — use para fornecer informações adicionais ao modelo (ex: instruções de comportamento, dados de contexto).\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"claude-haiku-4-5\",\n    \"usage\": {\n      \"inputTokens\": 120,\n      \"outputTokens\": 80,\n      \"totalTokens\": 200,\n      \"costUsd\": 0.00042\n    }\n  }\n}",
       "metaSortKey": 1
     },
 
@@ -301,23 +301,18 @@
         "params": [
           {
             "name": "prompt",
-            "value": "Summarize the content of the uploaded file.",
-            "type": "text"
-          },
-          {
-            "name": "context",
-            "value": "You are a summarization assistant.",
+            "value": "Analise este contrato e identifique os principais riscos.",
             "type": "text"
           },
           {
             "name": "files",
-            "fileName": "sample.txt",
+            "fileName": "contrato.txt",
             "type": "file",
             "description": "Attach a .txt, .json, or .md file (max 5 MB)"
           }
         ]
       },
-      "description": "Envia um prompt + arquivos (multipart/form-data) para o LLM.\n\nFormatos suportados: .txt, .json, .md (máx. 5 MB por arquivo).\nO campo `context` é opcional.\nMúltiplos arquivos podem ser enviados usando o campo `files` várias vezes.\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"mistral\"\n  }\n}\n\n⚠️ O LLM precisa estar rodando (docker-compose up) para este endpoint funcionar.",
+      "description": "Envia um prompt + arquivos (multipart/form-data) para análise pelo Claude.\n\nFormatos suportados: .txt, .json, .md (máx. 5 MB por arquivo).\nMúltiplos arquivos podem ser enviados usando o campo `files` várias vezes.\n\n⚠️ O campo `context` foi removido — o sistema já injeta automaticamente um pre-prompt especializado em análise de contratos para pequenas empresas.\n\nSaída no formato:\n  Resumo | Tipo de contrato | Risco geral | Score (0-10)\n  Problemas encontrados | Sugestões práticas | Ação opcional\n\n💰 Custo estimado por request (com arquivo ~500 tokens):\n  Input:  ~1.665 tokens × $0,80/M = $0,00133\n  Output: ~900 tokens  × $4,00/M = $0,00360\n  Total:  ~$0,0049 por request ≈ R$0,028\n\nStatus esperado: 200 OK\n{\n  \"success\": true,\n  \"data\": {\n    \"response\": \"...\",\n    \"model\": \"claude-haiku-4-5\",\n    \"usage\": {\n      \"inputTokens\": 1665,\n      \"outputTokens\": 900,\n      \"totalTokens\": 2565,\n      \"costUsd\": 0.00493\n    }\n  }\n}",
       "metaSortKey": 2
     }
   ]
