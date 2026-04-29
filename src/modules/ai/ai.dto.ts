@@ -12,10 +12,10 @@ export interface GenerateDto {
 /**
  * generate-with-files: the user may send files, type the contract directly, or both.
  * At least one of `files` (multipart) or `contractText` must be present — validated in the controller.
- * `prompt` is optional; defaults to "Analise este contrato".
+ * `question` is optional; when omitted, the AI analyzes the contract using only the system prompt.
  */
 export interface GenerateWithFilesDto {
-  prompt: string;
+  question?: string;
   contractText?: string;
 }
 
@@ -43,9 +43,12 @@ export function validateGenerateDto(body: unknown): GenerateDto {
 export function validateGenerateWithFilesDto(body: unknown): GenerateWithFilesDto {
   const b = body as Record<string, unknown>;
 
-  // prompt is optional — defaults to "Analise este contrato"
-  if (b.prompt !== undefined && (typeof b.prompt !== 'string' || b.prompt.trim().length === 0)) {
-    const err = new Error('prompt deve ser uma string não vazia');
+  // question is optional — when absent the system prompt drives the analysis
+  if (
+    b.question !== undefined &&
+    (typeof b.question !== 'string' || b.question.trim().length === 0)
+  ) {
+    const err = new Error('question deve ser uma string não vazia');
     (err as NodeJS.ErrnoException & { statusCode: number }).statusCode = 400;
     throw err;
   }
@@ -57,7 +60,7 @@ export function validateGenerateWithFilesDto(body: unknown): GenerateWithFilesDt
   }
 
   return {
-    prompt: typeof b.prompt === 'string' ? b.prompt.trim() : 'Analise este contrato',
+    question: typeof b.question === 'string' ? b.question.trim() : undefined,
     contractText: typeof b.contractText === 'string' ? b.contractText.trim() : undefined,
   };
 }

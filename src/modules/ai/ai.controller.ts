@@ -14,18 +14,19 @@ import { extractTextFromFile, ALLOWED_EXTENSIONS } from './ai.file-parser';
 import { ApiResponse } from '../../shared/utils/response.util';
 
 /**
- * Builds a single prompt string from the base prompt, optional context,
- * optional typed contract text, and an array of file contents.
+ * Builds the user message for file-based requests.
+ * The system prompt (FILE_ANALYSIS_SYSTEM_PROMPT) always drives the analysis;
+ * this function only assembles the document content + optional user question.
+ *
+ * Scenario 1 — file only:    document content is sent; AI follows the system prompt.
+ * Scenario 2 — file + question: document content + explicit question appended.
  */
-function buildPrompt(
-  prompt: string,
-  opts: { context?: string; contractText?: string; fileContents?: string[] } = {},
-): string {
+function buildFileUserMessage(opts: {
+  contractText?: string;
+  fileContents?: string[];
+  question?: string;
+}): string {
   const parts: string[] = [];
-
-  if (opts.context?.trim()) {
-    parts.push(`Context:\n${opts.context.trim()}`);
-  }
 
   if (opts.contractText?.trim()) {
     parts.push(`--- Contrato (texto digitado) ---\n${opts.contractText.trim()}`);
@@ -37,7 +38,9 @@ function buildPrompt(
     );
   }
 
-  parts.push(`User: ${prompt}`);
+  if (opts.question?.trim()) {
+    parts.push(`Pergunta: ${opts.question.trim()}`);
+  }
 
   return parts.join('\n\n');
 }
@@ -46,7 +49,10 @@ export const aiController = {
   async generate(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const dto = validateGenerateDto(req.body);
-      const prompt = buildPrompt(dto.prompt, { context: dto.context });
+      const parts: string[] = [];
+      if (dto.context?.trim()) parts.push(`Context:\n${dto.context.trim()}`);
+      parts.push(`User: ${dto.prompt}`);
+      const prompt = parts.join('\n\n');
 
       const result = await aiService.complete({ prompt });
 
@@ -99,7 +105,11 @@ export const aiController = {
         throw err;
       }
 
-      const prompt = buildPrompt(dto.prompt, { contractText: dto.contractText, fileContents });
+      const prompt = buildFileUserMessage({
+        contractText: dto.contractText,
+        fileContents,
+        question: dto.question,
+      });
       const result = await aiService.complete({
         prompt,
         systemPrompt: FILE_ANALYSIS_SYSTEM_PROMPT,
