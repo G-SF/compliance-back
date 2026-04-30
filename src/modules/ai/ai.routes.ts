@@ -1,9 +1,8 @@
 /**
  * AI Routes
  *
- * POST /generate              — prompt + optional context (JSON body)
- * POST /generate-with-files   — file(s) only + optional contractText (core/analyze, no user question)
- * POST /ask                   — file(s) + required question (freemium, no system pre-prompt)
+ * POST /generate-with-files   — file(s) only + optional contractText (full structured analysis)
+ * POST /ask                   — file(s) + required question (Markdown answer, no JSON)
  */
 
 import { Router } from 'express';
@@ -22,6 +21,5 @@ export const aiRouter = Router();
 // All AI routes require authentication
 aiRouter.use(authMiddleware);
 
-aiRouter.post('/generate', aiController.generate);
 aiRouter.post('/generate-with-files', upload.array('files'), aiController.generateWithFiles);
 aiRouter.post('/ask', upload.array('files'), aiController.askWithFile);

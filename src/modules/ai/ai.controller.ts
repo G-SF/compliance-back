@@ -1,8 +1,8 @@
 /**
  * AI Controller
  *
- * Handles POST /api/v1/ai/generate and POST /api/v1/ai/generate-with-files.
- * Builds the full prompt from prompt + context + uploaded file contents,
+ * Handles POST /api/v1/ai/generate-with-files and POST /api/v1/ai/ask.
+ * Builds the full prompt from contractText + uploaded file contents,
  * then delegates generation to aiService.
  */
 
@@ -10,12 +10,8 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { Types } from 'mongoose';
 import { aiService } from './ai.service';
-import {
-  validateGenerateDto,
-  validateGenerateWithFilesDto,
-  validateAskWithFileDto,
-} from './ai.dto';
-import { FILE_ANALYSIS_SYSTEM_PROMPT } from './ai.prompts';
+import { validateGenerateWithFilesDto, validateAskWithFileDto } from './ai.dto';
+import { FILE_ANALYSIS_SYSTEM_PROMPT, ASK_WITH_FILE_SYSTEM_PROMPT } from './ai.prompts';
 import { extractTextFromFile, ALLOWED_EXTENSIONS } from './ai.file-parser';
 import { ApiResponse } from '../../shared/utils/response.util';
 import { AnalysisModel } from '../history/analysis.model';
@@ -56,33 +52,6 @@ function buildFileUserMessage(opts: {
 }
 
 export const aiController = {
-  async generate(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const dto = validateGenerateDto(req.body);
-      const parts: string[] = [];
-      if (dto.context?.trim()) parts.push(`Context:\n${dto.context.trim()}`);
-      parts.push(`User: ${dto.prompt}`);
-      const prompt = parts.join('\n\n');
-
-      const result = await aiService.complete({ prompt });
-
-      res.json(
-        ApiResponse.success({
-          response: result.text,
-          model: result.model,
-          usage: {
-            inputTokens: result.inputTokens,
-            outputTokens: result.outputTokens,
-            totalTokens: result.tokensUsed,
-            costUsd: result.costUsd,
-          },
-        }),
-      );
-    } catch (err) {
-      next(err);
-    }
-  },
-
   async generateWithFiles(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const body = req.body as Record<string, unknown>;
@@ -233,7 +202,12 @@ export const aiController = {
         question: dto.question,
       });
 
-      const result = await aiService.complete({ prompt });
+      // +100% de tokens em relação ao cap padrão (2048) para respostas Markdown completas
+      const result = await aiService.complete({
+        prompt,
+        systemPrompt: ASK_WITH_FILE_SYSTEM_PROMPT,
+        maxTokens: 2048,
+      });
 
       // Persist to history (non-blocking)
       const { userId } = req as AuthenticatedRequest;

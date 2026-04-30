@@ -36,8 +36,12 @@ export interface RiscoInfo {
 
 export interface Problema {
   nome: string;
+  /** Número ou título exato da cláusula, ou 'Ausente' se não existe */
+  clausula: string;
   impacto: string;
-  severidade: 'crítico' | 'médio' | 'baixo';
+  severidade: 'Crítico' | 'Médio' | 'Baixo';
+  /** Artigo e lei aplicável, ex: 'art. 51, IV do CDC' */
+  base_legal: string;
 }
 
 /**
@@ -49,7 +53,8 @@ export interface ContractAnalysis {
   risco: RiscoInfo;
   problemas: Problema[];
   sugestoes: string[];
-  resposta_usuario: string;
+  /** Critical legal alerts requiring immediate attention */
+  alertas_legais: string[];
 }
 
 export interface AiResponse {

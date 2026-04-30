@@ -19,8 +19,9 @@ import { logger } from '../../shared/utils/logger';
 const PRICE_INPUT_PER_TOKEN = 0.8 / 1_000_000;
 const PRICE_OUTPUT_PER_TOKEN = 4.0 / 1_000_000;
 
-// max_tokens: 2048 permite resposta_usuario longa (ex: top 10 list) sem truncar
-const MAX_OUTPUT_TOKENS_OVERRIDE = 2048;
+// max_tokens: 1024 cobre o JSON completo com até 4 problemas detalhados (~900 tokens)
+// Claude para naturalmente quando termina — o cap só evita edge cases extremos
+const MAX_OUTPUT_TOKENS_OVERRIDE = 1024;
 
 class ClaudeAiService implements IAiService {
   private readonly client: Anthropic;
@@ -42,7 +43,8 @@ class ClaudeAiService implements IAiService {
 
       const msg = await this.client.messages.create({
         model: this.model,
-        max_tokens: Math.min(config.claude.maxTokens, MAX_OUTPUT_TOKENS_OVERRIDE),
+        max_tokens:
+          options.maxTokens ?? Math.min(config.claude.maxTokens, MAX_OUTPUT_TOKENS_OVERRIDE),
         // temperature: 0 = respostas determinísticas e consistentes
         // Ideal para análise factual — elimina variação entre chamadas
         // Não usar top_p junto com temperature (Anthropic recomenda um ou outro)
