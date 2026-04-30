@@ -2,14 +2,15 @@
  * AI File Parser
  *
  * Extracts plain text from uploaded contract files.
- * Normalizes the extracted text to reduce token usage (collapse whitespace,
- * remove page-number artifacts, truncate very large documents).
+ * PDFs go through the full pre-processing pipeline (pdf-processor.ts) to reduce
+ * token usage and improve AI response quality. TXT and DOCX use lightweight
+ * normalisation.
  * Supported: .txt, .pdf, .docx
  */
 
-import pdfParse = require('pdf-parse');
 import mammoth from 'mammoth';
 import path from 'path';
+import { processPdfForAi } from './pdf-processor';
 
 export const ALLOWED_EXTENSIONS = ['.txt', '.pdf', '.docx'];
 
@@ -28,7 +29,7 @@ const MAX_DOCUMENT_CHARS = 60_000;
  */
 function normalizeExtractedText(raw: string): string {
   return raw
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/gu, ' ')
     .split('\n')
     .map(line => line.replace(/[ \t]{2,}/g, ' ').trimEnd())
     .filter(line => !/^\s*\d{1,4}\s*$/.test(line))
@@ -52,9 +53,10 @@ export async function extractTextFromFile(buffer: Buffer, filename: string): Pro
       break;
 
     case '.pdf': {
-      const data = await pdfParse(buffer);
-      raw = data.text;
-      break;
+      // Full pipeline: extract → clean → filter → chunk → cap
+      // Returns pre-processed text ready for the AI (no further normalisation needed).
+      const { text } = await processPdfForAi(buffer);
+      return text;
     }
 
     case '.docx': {
