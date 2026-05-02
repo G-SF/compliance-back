@@ -70,10 +70,13 @@ export class HistoryService {
 
     if (!analysis) return null;
 
-    // Non-admins can only access their own analyses
-    const ownerStr = (
-      analysis as { userId: { toString(): string } | { _id: unknown } }
-    ).userId?.toString();
+    // Non-admins can only access their own analyses.
+    // After .populate(), userId becomes { _id, email, role } — extract _id when needed.
+    const rawUserId = (analysis as Record<string, unknown>).userId;
+    const ownerStr =
+      rawUserId && typeof rawUserId === 'object' && '_id' in (rawUserId as object)
+        ? String((rawUserId as { _id: unknown })._id)
+        : String(rawUserId);
     if (!isAdmin && ownerStr !== requestingUserId) return null;
 
     return analysis;
