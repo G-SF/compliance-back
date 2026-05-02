@@ -71,7 +71,7 @@ export const aiController = {
             (err as Error & { statusCode: number }).statusCode = 400;
             throw err;
           }
-          fileContents.push(await extractTextFromFile(file.buffer, file.originalname));
+          fileContents.push(await extractTextFromFile(file.buffer, file.originalname, 'analysis'));
         }
       }
 
@@ -88,9 +88,22 @@ export const aiController = {
         contractText: dto.contractText,
         fileContents,
       });
+
+      // Conciseness constraints appended at call-time — keeps FILE_ANALYSIS_SYSTEM_PROMPT
+      // unchanged while capping output verbosity (~25-35% fewer output tokens).
+      const analysisSystemPrompt =
+        FILE_ANALYSIS_SYSTEM_PROMPT +
+        '\n\nCOMPRIMENTO MÁXIMO POR CAMPO (obrigatório, sem exceções):\n' +
+        'resumo ≤220 chars | maior_risco ≤100 chars | ' +
+        'nome ≤45 chars | clausula ≤35 chars | impacto ≤130 chars | base_legal ≤65 chars | ' +
+        'cada item de sugestoes ≤130 chars | cada item de alertas_legais ≤110 chars';
+
       const result = await aiService.complete({
         prompt,
-        systemPrompt: FILE_ANALYSIS_SYSTEM_PROMPT,
+        systemPrompt: analysisSystemPrompt,
+        // Com campos curtos o JSON completo cabe em ~1 200-1 400 tokens;
+        // 2 000 dá margem de 40% sem desperdiçar headroom.
+        maxTokens: 2000,
       });
 
       // ── Persist DocumentRecord (upsert by hash) so the correction flow
@@ -184,7 +197,7 @@ export const aiController = {
             (err as Error & { statusCode: number }).statusCode = 400;
             throw err;
           }
-          fileContents.push(await extractTextFromFile(file.buffer, file.originalname));
+          fileContents.push(await extractTextFromFile(file.buffer, file.originalname, 'ask'));
         }
       }
 
@@ -205,6 +218,8 @@ export const aiController = {
       const result = await aiService.complete({
         prompt,
         systemPrompt: ASK_WITH_FILE_SYSTEM_PROMPT,
+        // Markdown com 6 seções; 2 000 tokens é 3× o output típico (~675 tokens)
+        maxTokens: 2000,
       });
 
       // Persist to history (non-blocking)

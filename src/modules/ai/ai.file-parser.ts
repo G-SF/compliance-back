@@ -15,6 +15,18 @@ import { processPdfForAi } from './pdf-processor';
 export const ALLOWED_EXTENSIONS = ['.txt', '.pdf', '.docx'];
 
 /**
+ * Controls how the PDF pre-processing pipeline handles the contract text.
+ *
+ * - `'analysis'` — skips `filterRelevantSections` so the complete contract is
+ *   preserved. Required by /generate-with-files, whose structured JSON output
+ *   must cover parties/CNPJ, IP, LGPD, confidentiality, exclusivity, etc.
+ *
+ * - `'ask'` — applies `filterRelevantSections` to focus the context on clauses
+ *   matching relevance keywords, reducing tokens for question-answering calls.
+ */
+export type FileExtractionMode = 'analysis' | 'ask';
+
+/**
  * Maximum characters to send to the AI (~15 k tokens).
  * Covers 99 % of real contracts while avoiding runaway cost on oversized files.
  */
@@ -41,8 +53,16 @@ function normalizeExtractedText(raw: string): string {
 /**
  * Extracts and normalizes text content from a file buffer based on its extension.
  * Throws a 400-statusCode error for unsupported types.
+ *
+ * @param mode - `'analysis'` preserves the full contract text (no relevance
+ *   filter) for structured JSON analysis. `'ask'` applies the relevance filter
+ *   to reduce tokens for question-answering calls. Defaults to `'ask'`.
  */
-export async function extractTextFromFile(buffer: Buffer, filename: string): Promise<string> {
+export async function extractTextFromFile(
+  buffer: Buffer,
+  filename: string,
+  mode: FileExtractionMode = 'ask',
+): Promise<string> {
   const ext = path.extname(filename).toLowerCase();
 
   let raw: string;
@@ -53,9 +73,9 @@ export async function extractTextFromFile(buffer: Buffer, filename: string): Pro
       break;
 
     case '.pdf': {
-      // Full pipeline: extract → clean → filter → chunk → cap
-      // Returns pre-processed text ready for the AI (no further normalisation needed).
-      const { text } = await processPdfForAi(buffer);
+      // Full pipeline: extract → clean → [filter] → chunk → cap
+      // applyFilter=false for 'analysis' to preserve parties/CNPJ, IP, LGPD, etc.
+      const { text } = await processPdfForAi(buffer, { applyFilter: mode !== 'analysis' });
       return text;
     }
 
