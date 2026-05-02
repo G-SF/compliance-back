@@ -12,6 +12,7 @@
  */
 
 import express, { Application, Request, Response } from 'express';
+import cors from 'cors';
 import { apiReference } from '@scalar/express-api-reference';
 import { authRouter } from './modules/auth/auth.routes';
 import { aiRouter } from './modules/ai/ai.routes';
@@ -23,6 +24,14 @@ import { openApiSpec } from './config/openapi';
 
 export function createApp(): Application {
   const app = express();
+
+  // ── CORS ────────────────────────────────────────────────────────────────────
+  app.use(
+    cors({
+      origin: process.env['CORS_ORIGIN'] ?? 'http://localhost:5173',
+      credentials: true,
+    }),
+  );
 
   // ── Built-in middleware ─────────────────────────────────────────────────────
   app.use(express.json({ limit: '1mb' }));

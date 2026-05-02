@@ -202,11 +202,9 @@ export const aiController = {
         question: dto.question,
       });
 
-      // +100% de tokens em relação ao cap padrão (2048) para respostas Markdown completas
       const result = await aiService.complete({
         prompt,
         systemPrompt: ASK_WITH_FILE_SYSTEM_PROMPT,
-        maxTokens: 2048,
       });
 
       // Persist to history (non-blocking)

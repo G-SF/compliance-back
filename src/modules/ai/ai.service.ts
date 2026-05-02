@@ -7,7 +7,7 @@
  * Configuration (via environment variables / config):
  *   ANTHROPIC_API_KEY — required
  *   CLAUDE_MODEL      — defaults to "claude-haiku-4-5"
- *   CLAUDE_MAX_TOKENS — defaults to 1200 (fits the contract analysis format)
+ *   CLAUDE_MAX_TOKENS — defaults to 4096 (configured via .env or docker-compose)
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -18,10 +18,6 @@ import { logger } from '../../shared/utils/logger';
 // Claude Haiku 4.5 pricing (USD per token)
 const PRICE_INPUT_PER_TOKEN = 0.8 / 1_000_000;
 const PRICE_OUTPUT_PER_TOKEN = 4.0 / 1_000_000;
-
-// max_tokens: 1024 cobre o JSON completo com até 4 problemas detalhados (~900 tokens)
-// Claude para naturalmente quando termina — o cap só evita edge cases extremos
-const MAX_OUTPUT_TOKENS_OVERRIDE = 1024;
 
 class ClaudeAiService implements IAiService {
   private readonly client: Anthropic;
@@ -43,8 +39,7 @@ class ClaudeAiService implements IAiService {
 
       const msg = await this.client.messages.create({
         model: this.model,
-        max_tokens:
-          options.maxTokens ?? Math.min(config.claude.maxTokens, MAX_OUTPUT_TOKENS_OVERRIDE),
+        max_tokens: options.maxTokens ?? config.claude.maxTokens,
         // temperature: 0 = respostas determinísticas e consistentes
         // Ideal para análise factual — elimina variação entre chamadas
         // Não usar top_p junto com temperature (Anthropic recomenda um ou outro)
@@ -73,15 +68,38 @@ class ClaudeAiService implements IAiService {
 
       let parsed: ContractAnalysis | null = null;
       if (systemPrompt) {
+        console.log('[AI DEBUG] RAW TEXT FROM MODEL:\n', text);
+        console.log('[AI DEBUG] systemPrompt present:', !!systemPrompt);
         try {
-          // Strip markdown code fences if the model wraps the JSON anyway
-          const clean = text
-            .replace(/^```(?:json)?\s*/i, '')
-            .replace(/\s*```$/i, '')
-            .trim();
+          let clean = text.trim();
+
+          // 1. Preferred: extract JSON from inside a markdown code fence (anywhere in the response)
+          const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+          console.log('[AI DEBUG] codeBlockMatch found:', !!codeBlockMatch);
+          if (codeBlockMatch) {
+            clean = codeBlockMatch[1].trim();
+            console.log('[AI DEBUG] Extracted from code block:\n', clean.slice(0, 500));
+          } else {
+            // 2. Fallback: extract the substring from the first '{' to the last '}'
+            const firstBrace = text.indexOf('{');
+            const lastBrace = text.lastIndexOf('}');
+            console.log('[AI DEBUG] firstBrace:', firstBrace, '| lastBrace:', lastBrace);
+            if (firstBrace !== -1 && lastBrace > firstBrace) {
+              clean = text.substring(firstBrace, lastBrace + 1).trim();
+              console.log('[AI DEBUG] Extracted by braces:\n', clean.slice(0, 500));
+            } else {
+              console.log('[AI DEBUG] No JSON structure found in response.');
+            }
+          }
+
+          console.log('[AI DEBUG] String to parse (first 800 chars):\n', clean.slice(0, 800));
           parsed = JSON.parse(clean) as ContractAnalysis;
-        } catch {
-          logger.warn('[AI] Response is not valid JSON — returning raw text only');
+          console.log('[AI DEBUG] JSON.parse SUCCESS — parsed keys:', Object.keys(parsed));
+        } catch (parseErr) {
+          console.error('[AI DEBUG] JSON.parse FAILED:', parseErr);
+          logger.warn('[AI] Response is not valid JSON — returning raw text only', {
+            responsePreview: text.slice(0, 300),
+          });
         }
       }
 

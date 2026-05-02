@@ -42,6 +42,6 @@ export const config = {
   claude: {
     apiKey: requireEnv('ANTHROPIC_API_KEY'),
     model: optionalEnv('CLAUDE_MODEL', 'claude-haiku-4-5'),
-    maxTokens: parseInt(optionalEnv('CLAUDE_MAX_TOKENS', '1200'), 10),
+    maxTokens: parseInt(optionalEnv('CLAUDE_MAX_TOKENS', '4096'), 10),
   },
 } as const;
