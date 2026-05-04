@@ -18,6 +18,7 @@ import { authRouter } from './modules/auth/auth.routes';
 import { aiRouter } from './modules/ai/ai.routes';
 import { historyRouter } from './modules/history/history.routes';
 import { documentAnalysisRouter } from './modules/document-analysis/document-analysis.routes';
+import { aiCostsRouter } from './modules/ai-costs/ai-costs.routes';
 import { errorMiddleware } from './shared/middleware/error.middleware';
 import { ApiResponse } from './shared/utils/response.util';
 import { openApiSpec } from './config/openapi';
@@ -58,6 +59,7 @@ export function createApp(): Application {
   app.use('/api/v1/ai', aiRouter);
   app.use('/api/v1/history', historyRouter);
   app.use('/api/v1/document-analysis', documentAnalysisRouter);
+  app.use('/api/v1/ai-costs', aiCostsRouter);
 
   // ── Catch-all 404 ───────────────────────────────────────────────────────────
   app.use((_req: Request, res: Response) => {

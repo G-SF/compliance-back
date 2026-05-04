@@ -44,4 +44,10 @@ export const config = {
     model: optionalEnv('CLAUDE_MODEL', 'claude-haiku-4-5'),
     maxTokens: parseInt(optionalEnv('CLAUDE_MAX_TOKENS', '4096'), 10),
   },
+
+  costs: {
+    // Cotação USD → BRL usada para exibir valores em reais no módulo ai-costs.
+    // Atualize via variável de ambiente USD_BRL_RATE conforme o mercado.
+    usdToBrlRate: parseFloat(optionalEnv('USD_BRL_RATE', '5.90')),
+  },
 } as const;

@@ -226,7 +226,12 @@ export const aiController = {
       const { userId } = req as AuthenticatedRequest;
       const primaryFile = files && files.length > 0 ? files[0] : null;
       const rawExt = primaryFile?.originalname.split('.').pop()?.toLowerCase() ?? null;
+
+      // Pre-generate analysisId so we can return it before the non-blocking DB write
+      const analysisObjectId = new Types.ObjectId();
+
       AnalysisModel.create({
+        _id: analysisObjectId,
         userId,
         fileName: primaryFile?.originalname ?? null,
         fileExtension: rawExt ? `.${rawExt}` : null,
@@ -248,6 +253,7 @@ export const aiController = {
       res.json(
         ApiResponse.success({
           response: result.text,
+          analysisId: analysisObjectId.toString(),
           model: result.model,
           usage: {
             inputTokens: result.inputTokens,

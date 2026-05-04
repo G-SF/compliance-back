@@ -32,6 +32,9 @@
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-haiku-4-5}
       CLAUDE_MAX_TOKENS: ${CLAUDE_MAX_TOKENS:-4096}
 
+      # Custos — cotação USD→BRL (atualize conforme mercado)
+      USD_BRL_RATE: ${USD_BRL_RATE:-5.90}
+
     depends_on:
       mongo:
         condition: service_healthy

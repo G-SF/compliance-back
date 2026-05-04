@@ -15,9 +15,11 @@ import { IAiService, AiPromptOptions, AiResponse, ContractAnalysis } from './ai.
 import { config } from '../../config';
 import { logger } from '../../shared/utils/logger';
 
-// Claude Haiku 4.5 pricing (USD per token)
-const PRICE_INPUT_PER_TOKEN = 0.8 / 1_000_000;
-const PRICE_OUTPUT_PER_TOKEN = 4.0 / 1_000_000;
+// Claude Haiku 4.5 pricing (USD per token) — source: Anthropic / Google Cloud Vertex AI, May 2026
+// Claude 3.5 Haiku (descontinuado): $0.80/$4.00 por milhão de tokens
+// Claude Haiku 4.5 (atual):         $1.00/$5.00 por milhão de tokens
+const PRICE_INPUT_PER_TOKEN = 1.0 / 1_000_000;
+const PRICE_OUTPUT_PER_TOKEN = 5.0 / 1_000_000;
 
 class ClaudeAiService implements IAiService {
   private readonly client: Anthropic;
