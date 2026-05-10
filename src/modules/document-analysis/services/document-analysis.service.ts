@@ -100,24 +100,22 @@ export const documentAnalysisService = {
     }
 
     // ── Build targeted prompt ──────────────────────────────────────────────
-    const { problemas, sugestoes } = analysis.analysis;
+    // Envia apenas nome do problema — severidade/impacto/sugestoes são redundantes
+    // para localizar o trecho_exato e geram tokens desnecessários.
+    const { problemas } = analysis.analysis;
 
-    const problemasText = problemas
-      .map((p, i) => `${i + 1}. [${p.severidade.toUpperCase()}] ${p.nome} — ${p.impacto}`)
-      .join('\n');
-
-    const sugestoesText = sugestoes.map((s, i) => `${i + 1}. ${s}`).join('\n');
+    const problemasText = problemas.map((p, i) => `${i + 1}. ${p.nome}`).join('\n');
 
     const prompt = [
       `[DOCUMENTO]\n${docRecord.originalText}\n[/DOCUMENTO]`,
       `[PROBLEMAS]\n${problemasText}\n[/PROBLEMAS]`,
-      `[SUGESTOES]\n${sugestoesText}\n[/SUGESTOES]`,
     ].join('\n\n');
 
     // ── Call AI ────────────────────────────────────────────────────────────
     const result = await aiService.complete({
       prompt,
       systemPrompt: PATCH_GENERATION_SYSTEM_PROMPT,
+      maxTokens: 2048, // patches são curtos; evita geração desnecessária
     });
 
     logger.info('[DocumentAnalysis] Patch generation complete', {

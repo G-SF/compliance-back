@@ -18,6 +18,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { documentAnalysisService } from './services/document-analysis.service';
+import { applyPatchesToDocx, createDocxFromText } from './services/docx-patcher.service';
 import { validateCorrectDto } from './document-analysis.dto';
 import { ApiResponse } from '../../shared/utils/response.util';
 import { AuthenticatedRequest } from '../../shared/middleware/auth.middleware';
@@ -134,9 +135,10 @@ export const documentAnalysisController = {
   /**
    * GET /:documentId/download?issueIds=id1,id2
    *
-   * Applies patches and streams the corrected document as a .txt file download.
+   * Applies patches and streams the corrected document.
+   * - DOCX source with stored buffer → returns a patched .docx (original formatting preserved)
+   * - Everything else → returns corrected plain text as .txt
    * issueIds is an optional comma-separated list; omit to apply ALL patches.
-   * The filename is derived from the original document name.
    */
   async download(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -156,17 +158,48 @@ export const documentAnalysisController = {
         throw Object.assign(new Error('Document not found'), { statusCode: 404 });
       }
 
-      const result = await documentAnalysisService.correctDocument(documentId, issueIds);
-
-      // Derive filename from the original upload name, always serve as .txt
       const baseName = docRecord.fileName
         ? docRecord.fileName.replace(/\.[^.]+$/, '')
         : 'documento-corrigido';
-      const downloadName = `${baseName}-corrigido.txt`;
 
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
-      res.send(result.correctedText);
+      const hasBuffer = docRecord.originalFileBuffer && docRecord.originalFileBuffer.length > 0;
+
+      if (hasBuffer) {
+        const rawBuf = Buffer.isBuffer(docRecord.originalFileBuffer)
+          ? docRecord.originalFileBuffer
+          : Buffer.from(docRecord.originalFileBuffer as unknown as Uint8Array);
+
+        const issues =
+          issueIds && issueIds.length > 0
+            ? await issueService.getIssuesByIds(issueIds)
+            : await issueService.getIssuesByDocument(documentId);
+
+        const patches = issues
+          .filter(i => i.trecho_exato?.trim() && i.rewrite !== undefined)
+          .map(i => ({ trecho_exato: i.trecho_exato, rewrite: i.rewrite }));
+
+        // ── DOCX: format-preserving patch via XML manipulation ─────────────
+        if (docRecord.fileExtension === '.docx') {
+          const docxBuffer = applyPatchesToDocx(rawBuf, patches);
+          res.setHeader(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          );
+          res.setHeader('Content-Disposition', `attachment; filename="${baseName}-corrigido.docx"`);
+          res.send(docxBuffer);
+          return;
+        }
+      }
+
+      // ── Fallback: gera DOCX a partir do texto corrigido ─────────────────
+      const result = await documentAnalysisService.correctDocument(documentId, issueIds);
+      const docxBuffer = createDocxFromText(result.correctedText);
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      );
+      res.setHeader('Content-Disposition', `attachment; filename="${baseName}-corrigido.docx"`);
+      res.send(docxBuffer);
     } catch (err) {
       next(err);
     }

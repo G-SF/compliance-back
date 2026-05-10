@@ -433,7 +433,7 @@ export const openApiSpec = {
     },
     '/api/v1/auth/promote/{userId}': {
       patch: {
-        tags: ['Auth � Admin'],
+        tags: ['Auth - Admin'],
         summary: 'Alterar role de um usuario (admin only)',
         parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
         requestBody: {
@@ -537,7 +537,7 @@ export const openApiSpec = {
     '/api/v1/ai/ask': {
       post: {
         tags: ['AI'],
-        summary: 'Pergunta livre sobre arquivo � salva no historico',
+        summary: 'Pergunta livre sobre arquivo - salva no historico',
         requestBody: {
           required: true,
           content: {
@@ -811,7 +811,7 @@ export const openApiSpec = {
     },
     '/api/v1/history/admin/all': {
       get: {
-        tags: ['History � Admin'],
+        tags: ['History - Admin'],
         summary: 'Listar analises de TODOS os usuarios (admin only)',
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },

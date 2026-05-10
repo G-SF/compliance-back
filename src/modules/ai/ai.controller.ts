@@ -120,11 +120,17 @@ export const aiController = {
       const docRecord = await DocumentRecordModel.findOneAndUpdate(
         { userId: new Types.ObjectId(userId), hash: docHash },
         {
+          // Immutable fields: only set on first insert
           $setOnInsert: {
             userId: new Types.ObjectId(userId),
-            fileName: primaryFile?.originalname ?? null,
             originalText: rawDocumentText,
             hash: docHash,
+          },
+          // Backfillable fields: always update so old records gain the buffer
+          $set: {
+            fileName: primaryFile?.originalname ?? null,
+            fileExtension: rawExt ? `.${rawExt}` : null,
+            ...(primaryFile?.buffer ? { originalFileBuffer: primaryFile.buffer } : {}),
           },
         },
         { upsert: true, new: true },
