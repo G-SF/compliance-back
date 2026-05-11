@@ -14,11 +14,13 @@ export interface GenerateWithFilesDto {
 
 /**
  * ask-with-file (freemium): user must send a question about the file.
- * No system pre-prompt — the model answers freely within token limits.
+ * documentId is optional — when provided, enables per-contract question tracking.
  */
 export interface AskWithFileDto {
   question: string;
   contractText?: string;
+  /** documentId returned by /ai/generate-with-files — enables per-contract limit tracking */
+  documentId?: string;
 }
 
 export function validateGenerateWithFilesDto(body: unknown): GenerateWithFilesDto {
@@ -59,5 +61,6 @@ export function validateAskWithFileDto(body: unknown): AskWithFileDto {
   return {
     question: b.question.trim(),
     contractText: typeof b.contractText === 'string' ? b.contractText.trim() : undefined,
+    documentId: typeof b.documentId === 'string' ? b.documentId.trim() : undefined,
   };
 }

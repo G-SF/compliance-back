@@ -50,4 +50,9 @@ export const config = {
     // Atualize via variável de ambiente USD_BRL_RATE conforme o mercado.
     usdToBrlRate: parseFloat(optionalEnv('USD_BRL_RATE', '5.90')),
   },
+
+  billing: {
+    /** Allow /billing/recharge in all environments */
+    frontendUrl: optionalEnv('FRONTEND_URL', 'http://localhost:5173'),
+  },
 } as const;

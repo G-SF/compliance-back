@@ -11,6 +11,7 @@ import { validateRegisterDto, validateLoginDto, validateRefreshTokenDto } from '
 import { ApiResponse } from '../../shared/utils/response.util';
 import { AuthenticatedRequest } from '../../shared/middleware/auth.middleware';
 import { UserRole } from './models/user.model';
+import { billingService } from '../billing/billing.service';
 
 export const authController = {
   async register(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -64,7 +65,18 @@ export const authController = {
         res.status(404).json(ApiResponse.error('User not found', 404));
         return;
       }
-      res.json(ApiResponse.success({ id: user._id, email: user.email, role: user.role }));
+
+      // Attach billing status alongside profile (best-effort — never fails /me)
+      const billing = await billingService.getUserBillingStatus(userId).catch(() => null);
+
+      res.json(
+        ApiResponse.success({
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          billing,
+        }),
+      );
     } catch (err) {
       next(err);
     }

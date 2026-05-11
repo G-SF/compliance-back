@@ -9,6 +9,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { aiController } from './ai.controller';
 import { authMiddleware } from '../../shared/middleware/auth.middleware';
+import { requireCredits, requireQuestion } from '../../shared/middleware/credits.middleware';
 
 // Keep files in memory — we only need the text content, no disk I/O required
 const upload = multer({
@@ -21,5 +22,13 @@ export const aiRouter = Router();
 // All AI routes require authentication
 aiRouter.use(authMiddleware);
 
-aiRouter.post('/generate-with-files', upload.array('files'), aiController.generateWithFiles);
-aiRouter.post('/ask', upload.array('files'), aiController.askWithFile);
+// generate-with-files consumes 1 credit per call
+aiRouter.post(
+  '/generate-with-files',
+  requireCredits,
+  upload.array('files'),
+  aiController.generateWithFiles,
+);
+
+// /ask: question-limit check (documentId optional in body for per-contract tracking)
+aiRouter.post('/ask', requireQuestion, upload.array('files'), aiController.askWithFile);

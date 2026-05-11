@@ -17,6 +17,8 @@ import { createApp } from './app';
 import { connectDatabase } from './database/connection';
 import { redisClient } from './infra/redis/client';
 import { logger } from './shared/utils/logger';
+import { billingService } from './modules/billing/billing.service';
+import cron from 'node-cron';
 
 async function bootstrap() {
   // 1. Connect to MongoDB
@@ -26,10 +28,22 @@ async function bootstrap() {
   await redisClient.ping();
   logger.info('Redis connection established');
 
-  // 3. Build the Express app
+  // 3. Seed billing plans (idempotent)
+  await billingService.seedPlans();
+
+  // 4. Start monthly subscription renewal cron (runs daily at 02:00)
+  cron.schedule('0 2 * * *', async () => {
+    logger.info('[Cron] Running monthly subscription renewals...');
+    await billingService.processMonthlyRenewals().catch(err => {
+      logger.error('[Cron] Monthly renewal failed', err);
+    });
+  });
+  logger.info('[Cron] Monthly renewal job scheduled (daily at 02:00)');
+
+  // 5. Build the Express app
   const app = createApp();
 
-  // 4. Start HTTP server
+  // 6. Start HTTP server
   const server = app.listen(config.port, () => {
     logger.info(`Server running on port ${config.port} [${config.nodeEnv}]`);
   });

@@ -305,6 +305,176 @@ export const openApiSpec = {
           statusCode: { type: 'integer' },
         },
       },
+
+      // ── Billing ────────────────────────────────────────────────────────────
+      PlanDefinition: {
+        type: 'object',
+        properties: {
+          slug: {
+            type: 'string',
+            enum: ['free', 'basic', 'essential', 'monthly'],
+            example: 'essential',
+          },
+          name: { type: 'string', example: 'Essencial' },
+          priceInCents: { type: 'integer', example: 1490 },
+          anchorPriceInCents: { type: 'integer', nullable: true, example: 1990 },
+          creditAmount: { type: 'integer', example: 10 },
+          analysisLimit: { type: 'integer', example: 10 },
+          questionLimitPerContract: { type: 'integer', description: '-1 = ilimitado', example: 5 },
+          autoFixLimitPerContract: {
+            type: 'integer',
+            description: '-1 = ilimitado, 0 = bloqueado',
+            example: 1,
+          },
+          isMonthly: { type: 'boolean', example: false },
+        },
+      },
+      BillingStatus: {
+        type: 'object',
+        properties: {
+          planSlug: { type: 'string', example: 'essential' },
+          planName: { type: 'string', example: 'Essencial' },
+          creditsRemaining: { type: 'integer', example: 7 },
+          analysisLimit: { type: 'integer', example: 10 },
+          questionLimitPerContract: { type: 'integer', example: 5 },
+          autoFixLimitPerContract: { type: 'integer', example: 1 },
+          isMonthly: { type: 'boolean', example: false },
+          subscriptionStatus: { type: 'string', nullable: true, example: null },
+          currentPeriodEnd: { type: 'string', format: 'date-time', nullable: true, example: null },
+        },
+      },
+      RechargeRequest: {
+        type: 'object',
+        required: ['planSlug'],
+        properties: {
+          planSlug: {
+            type: 'string',
+            enum: ['free', 'basic', 'essential', 'monthly'],
+            example: 'essential',
+          },
+        },
+      },
+      CreditTransaction: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          type: { type: 'string', enum: ['grant', 'consume', 'restore', 'adjustment'] },
+          amount: {
+            type: 'integer',
+            description: 'Positivo = adicionado, negativo = deduzido',
+            example: -1,
+          },
+          balanceAfter: { type: 'integer', example: 6 },
+          reason: { type: 'string', example: 'AI analysis completed' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      ContractUsage: {
+        type: 'object',
+        properties: {
+          questionsUsed: { type: 'integer', example: 2 },
+          questionsRemaining: { type: 'integer', description: '-1 = ilimitado', example: 3 },
+          autoFixUsed: { type: 'integer', example: 0 },
+          autoFixRemaining: {
+            type: 'integer',
+            description: '-1 = ilimitado, 0 = bloqueado',
+            example: 1,
+          },
+        },
+      },
+
+      // ── AI Costs ───────────────────────────────────────────────────────────
+      CostSummary: {
+        type: 'object',
+        properties: {
+          period: {
+            type: 'object',
+            properties: {
+              from: { type: 'string', nullable: true, example: '2025-01-01' },
+              to: { type: 'string', nullable: true, example: '2025-12-31' },
+            },
+          },
+          usdToBrlRate: { type: 'number', example: 5.9 },
+          requests: { type: 'integer', example: 42 },
+          inputTokens: { type: 'integer', example: 158400 },
+          outputTokens: { type: 'integer', example: 52200 },
+          totalTokens: { type: 'integer', example: 210600 },
+          costUsd: { type: 'number', example: 0.03159 },
+          costBrl: { type: 'number', example: 0.186381 },
+          avgCostPerRequestUsd: { type: 'number', example: 0.000752 },
+          avgCostPerRequestBrl: { type: 'number', example: 0.004437 },
+          byModel: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                model: { type: 'string', example: 'claude-haiku-4-5' },
+                requests: { type: 'integer' },
+                inputTokens: { type: 'integer' },
+                outputTokens: { type: 'integer' },
+                costUsd: { type: 'number' },
+                costBrl: { type: 'number' },
+              },
+            },
+          },
+          byType: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', example: 'generate-with-files' },
+                requests: { type: 'integer' },
+                costUsd: { type: 'number' },
+                costBrl: { type: 'number' },
+              },
+            },
+          },
+        },
+      },
+      PeriodBreakdown: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            period: { type: 'string', example: '2025-05-10' },
+            label: { type: 'string', example: '10 mai 2025' },
+            requests: { type: 'integer' },
+            inputTokens: { type: 'integer' },
+            outputTokens: { type: 'integer' },
+            costUsd: { type: 'number' },
+            costBrl: { type: 'number' },
+          },
+        },
+      },
+      RequestsPage: {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                userId: { type: 'string' },
+                analysisType: { type: 'string' },
+                status: { type: 'string' },
+                fileName: { type: 'string', nullable: true },
+                aiModel: { type: 'string' },
+                inputTokens: { type: 'integer' },
+                outputTokens: { type: 'integer' },
+                costUsd: { type: 'number' },
+                costBrl: { type: 'number' },
+                createdAt: { type: 'string', format: 'date-time' },
+              },
+            },
+          },
+          total: { type: 'integer' },
+          page: { type: 'integer' },
+          limit: { type: 'integer' },
+          totalPages: { type: 'integer' },
+          usdToBrlRate: { type: 'number' },
+        },
+      },
     },
   },
   paths: {
@@ -828,6 +998,643 @@ export const openApiSpec = {
             description: 'Lista de todas as analises',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/HistoryPage' } },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '403': {
+            description: 'Permissao negada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+
+    // ── Billing ──────────────────────────────────────────────────────────────
+    '/api/v1/billing/plans': {
+      get: {
+        tags: ['Billing'],
+        summary: 'Listar todos os planos ativos',
+        security: [],
+        responses: {
+          '200': {
+            description: 'Lista de planos',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { type: 'array', items: { $ref: '#/components/schemas/PlanDefinition' } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/billing/status': {
+      get: {
+        tags: ['Billing'],
+        summary: 'Status de billing do usuario autenticado (plano + creditos)',
+        responses: {
+          '200': {
+            description: 'Status atual do billing',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/BillingStatus' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/billing/recharge': {
+      post: {
+        tags: ['Billing'],
+        summary: 'Aplicar um plano imediatamente (sem pagamento)',
+        description:
+          'Endpoint de teste/desenvolvimento. Aplica qualquer plano ao usuario autenticado ' +
+          'e recarrega os creditos conforme o plano escolhido.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/RechargeRequest' } },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Plano aplicado — retorna o novo BillingStatus',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    message: { type: 'string', example: 'Plano "essential" aplicado com sucesso' },
+                    data: { $ref: '#/components/schemas/BillingStatus' },
+                  },
+                },
+              },
+            },
+          },
+          '400': {
+            description: 'planSlug invalido',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/billing/history': {
+      get: {
+        tags: ['Billing'],
+        summary: 'Historico de transacoes de creditos',
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, maximum: 50 } },
+        ],
+        responses: {
+          '200': {
+            description: 'Transacoes paginadas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        transactions: {
+                          type: 'array',
+                          items: { $ref: '#/components/schemas/CreditTransaction' },
+                        },
+                        total: { type: 'integer' },
+                        page: { type: 'integer' },
+                        limit: { type: 'integer' },
+                        totalPages: { type: 'integer' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/billing/contract-usage/{documentId}': {
+      get: {
+        tags: ['Billing'],
+        summary: 'Uso por contrato (perguntas e autocorrecao)',
+        parameters: [
+          {
+            name: 'documentId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'DocumentRecord ID retornado por /ai/generate-with-files',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Contadores de uso do contrato',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/ContractUsage' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+
+    // ── AI Costs (user) ───────────────────────────────────────────────────────
+    '/api/v1/ai-costs/summary': {
+      get: {
+        tags: ['AI Costs'],
+        summary: 'Resumo de custo do usuario autenticado',
+        parameters: [
+          {
+            name: 'from',
+            in: 'query',
+            schema: { type: 'string', format: 'date' },
+            description: 'Data inicial (ISO)',
+          },
+          {
+            name: 'to',
+            in: 'query',
+            schema: { type: 'string', format: 'date' },
+            description: 'Data final (ISO, inclusiva)',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Resumo de custos',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/CostSummary' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/requests': {
+      get: {
+        tags: ['AI Costs'],
+        summary: 'Lista paginada de requisicoes do usuario',
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50, maximum: 100 } },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Requisicoes paginadas',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/RequestsPage' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/daily': {
+      get: {
+        tags: ['AI Costs'],
+        summary: 'Breakdown diario de custos do usuario',
+        parameters: [
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          {
+            name: 'timezone',
+            in: 'query',
+            schema: { type: 'string', default: 'America/Sao_Paulo' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Breakdown diario',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/PeriodBreakdown' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/weekly': {
+      get: {
+        tags: ['AI Costs'],
+        summary: 'Breakdown semanal de custos do usuario',
+        parameters: [
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          {
+            name: 'timezone',
+            in: 'query',
+            schema: { type: 'string', default: 'America/Sao_Paulo' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Breakdown semanal',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/PeriodBreakdown' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/monthly': {
+      get: {
+        tags: ['AI Costs'],
+        summary: 'Breakdown mensal de custos do usuario',
+        parameters: [
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          {
+            name: 'timezone',
+            in: 'query',
+            schema: { type: 'string', default: 'America/Sao_Paulo' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Breakdown mensal',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/PeriodBreakdown' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+
+    // ── AI Costs (admin) ──────────────────────────────────────────────────────
+    '/api/v1/ai-costs/admin/summary': {
+      get: {
+        tags: ['AI Costs - Admin'],
+        summary: 'Resumo global de custos (todos os usuarios)',
+        parameters: [
+          {
+            name: 'userId',
+            in: 'query',
+            schema: { type: 'string' },
+            description: 'Filtrar por usuario especifico',
+          },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Resumo global',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/CostSummary' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '403': {
+            description: 'Permissao negada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/admin/requests': {
+      get: {
+        tags: ['AI Costs - Admin'],
+        summary: 'Todas as requisicoes paginadas (admin)',
+        parameters: [
+          { name: 'userId', in: 'query', schema: { type: 'string' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 50, maximum: 100 } },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Requisicoes',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/RequestsPage' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '403': {
+            description: 'Permissao negada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/admin/daily': {
+      get: {
+        tags: ['AI Costs - Admin'],
+        summary: 'Breakdown diario global (admin)',
+        parameters: [
+          { name: 'userId', in: 'query', schema: { type: 'string' } },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          {
+            name: 'timezone',
+            in: 'query',
+            schema: { type: 'string', default: 'America/Sao_Paulo' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Breakdown diario',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/PeriodBreakdown' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '403': {
+            description: 'Permissao negada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/admin/weekly': {
+      get: {
+        tags: ['AI Costs - Admin'],
+        summary: 'Breakdown semanal global (admin)',
+        parameters: [
+          { name: 'userId', in: 'query', schema: { type: 'string' } },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          {
+            name: 'timezone',
+            in: 'query',
+            schema: { type: 'string', default: 'America/Sao_Paulo' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Breakdown semanal',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/PeriodBreakdown' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '403': {
+            description: 'Permissao negada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/admin/monthly': {
+      get: {
+        tags: ['AI Costs - Admin'],
+        summary: 'Breakdown mensal global (admin)',
+        parameters: [
+          { name: 'userId', in: 'query', schema: { type: 'string' } },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          {
+            name: 'timezone',
+            in: 'query',
+            schema: { type: 'string', default: 'America/Sao_Paulo' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Breakdown mensal',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { $ref: '#/components/schemas/PeriodBreakdown' },
+                  },
+                },
+              },
+            },
+          },
+          '401': {
+            description: 'Nao autenticado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '403': {
+            description: 'Permissao negada',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/ai-costs/admin/by-user': {
+      get: {
+        tags: ['AI Costs - Admin'],
+        summary: 'Ranking de custo por usuario (admin)',
+        parameters: [
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Custo por usuario ordenado decrescente',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          userId: { type: 'string' },
+                          email: { type: 'string' },
+                          requests: { type: 'integer' },
+                          costUsd: { type: 'number' },
+                          costBrl: { type: 'number' },
+                          lastRequestAt: { type: 'string', format: 'date-time', nullable: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
           '401': {

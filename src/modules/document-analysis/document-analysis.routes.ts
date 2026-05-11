@@ -10,12 +10,18 @@
 import { Router } from 'express';
 import { documentAnalysisController } from './document-analysis.controller';
 import { authMiddleware } from '../../shared/middleware/auth.middleware';
+import { requireAutoFix } from '../../shared/middleware/credits.middleware';
 
 export const documentAnalysisRouter = Router();
 
 documentAnalysisRouter.use(authMiddleware);
 
-documentAnalysisRouter.post('/generate-patches', documentAnalysisController.generatePatches);
+// generate-patches triggers auto-fix — enforce plan limits
+documentAnalysisRouter.post(
+  '/generate-patches',
+  requireAutoFix,
+  documentAnalysisController.generatePatches,
+);
 
 documentAnalysisRouter.post('/correct/:documentId', documentAnalysisController.correct);
 

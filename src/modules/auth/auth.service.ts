@@ -20,6 +20,7 @@ import { UserModel, IUser, UserRole } from './models/user.model';
 import { redisService } from '../../infra/redis/redis.service';
 import { config } from '../../config';
 import { RegisterDto, LoginDto } from './auth.dto';
+import { PlanModel, PLAN_SLUGS } from '../billing/models/plan.model';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -51,8 +52,17 @@ export class AuthService {
     const count = await UserModel.countDocuments();
     const role: UserRole = count === 0 ? 'admin' : 'user';
 
+    // Assign free plan on registration
+    const freePlan = await PlanModel.findOne({ slug: PLAN_SLUGS.FREE }).catch(() => null);
+
     const hashed = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const user = await UserModel.create({ email: dto.email, password: hashed, role });
+    const user = await UserModel.create({
+      email: dto.email,
+      password: hashed,
+      role,
+      planId: freePlan?._id ?? null,
+      creditsRemaining: freePlan?.creditAmount ?? 2,
+    });
 
     return user;
   }

@@ -17,6 +17,8 @@ import { ApiResponse } from '../../shared/utils/response.util';
 import { AnalysisModel } from '../history/analysis.model';
 import { DocumentRecordModel } from '../document-analysis/models/document-record.model';
 import { AuthenticatedRequest } from '../../shared/middleware/auth.middleware';
+import { BillingAwareRequest } from '../../shared/middleware/credits.middleware';
+import { billingService } from '../billing/billing.service';
 import { logger } from '../../shared/utils/logger';
 
 /**
@@ -84,6 +86,8 @@ export const aiController = {
         throw err;
       }
 
+      const { userId } = req as AuthenticatedRequest;
+
       const prompt = buildFileUserMessage({
         contractText: dto.contractText,
         fileContents,
@@ -98,17 +102,25 @@ export const aiController = {
         'nome ≤45 chars | clausula ≤35 chars | impacto ≤130 chars | base_legal ≤65 chars | ' +
         'cada item de sugestoes ≤130 chars | cada item de alertas_legais ≤110 chars';
 
-      const result = await aiService.complete({
-        prompt,
-        systemPrompt: analysisSystemPrompt,
-        // Com campos curtos o JSON completo cabe em ~1 200-1 400 tokens;
-        // 2 000 dá margem de 40% sem desperdiçar headroom.
-        maxTokens: 2000,
-      });
+      let result;
+      try {
+        result = await aiService.complete({
+          prompt,
+          systemPrompt: analysisSystemPrompt,
+          maxTokens: 2000,
+        });
+      } catch (aiErr) {
+        // Restore credit since the AI call failed — the user should not be charged
+        if ((req as BillingAwareRequest).creditDeducted) {
+          await billingService
+            .restoreCredit(userId, 'AI call failed — credit restored')
+            .catch(() => undefined);
+        }
+        throw aiErr;
+      }
 
       // ── Persist DocumentRecord (upsert by hash) so the correction flow
       //    can load the original text later without re-uploading the file.
-      const { userId } = req as AuthenticatedRequest;
       const rawDocumentText = [dto.contractText?.trim(), ...fileContents]
         .filter((t): t is string => Boolean(t))
         .join('\n\n');
@@ -172,6 +184,11 @@ export const aiController = {
             outputTokens: result.outputTokens,
             totalTokens: result.tokensUsed,
             costUsd: result.costUsd,
+          },
+          billing: {
+            creditsRemaining:
+              (await billingService.getUserBillingStatus(userId).catch(() => null))
+                ?.creditsRemaining ?? null,
           },
         }),
       );
