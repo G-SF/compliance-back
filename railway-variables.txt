@@ -38,9 +38,9 @@ MONGO_URI=<COLE_AQUI_A_MONGO_URL_DO_PLUGIN_OU_ATLAS>
 
 # ─── Redis ────────────────────────────────────────────────────
 # Use REDIS_URL para conexão direta (Upstash, Railway plugin, etc.)
-# Formato: redis://default:SENHA@host:6379
-# Formato TLS:  rediss://default:SENHA@host:6380
-REDIS_URL=redis://default:<SENHA>@<HOST>:<PORTA>
+# ⚠️  Upstash exige TLS — use rediss:// com porta 6380
+# Formato Upstash: rediss://default:SENHA@becoming-leopard-XXXXX.upstash.io:6380
+REDIS_URL=rediss://default:<SENHA>@<HOST>:6380
 
 # ─── Claude AI ────────────────────────────────────────────────
 ANTHROPIC_API_KEY=<PREENCHER_SUA_CHAVE_ANTHROPIC>

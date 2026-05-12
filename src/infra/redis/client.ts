@@ -23,10 +23,22 @@ const retryStrategy = (times: number) => {
   return delay;
 };
 
+// Upstash e outros providers gerenciados exigem TLS mesmo com redis:// —
+// forçamos TLS sempre que a URL contiver um host externo (não localhost/127.0.0.1).
+function needsTls(url: string): boolean {
+  if (url.startsWith('rediss://')) return true;
+  try {
+    const host = new URL(url).hostname;
+    return host !== 'localhost' && host !== '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
 export const redisClient = config.redis.url
   ? new Redis(config.redis.url, {
       retryStrategy,
-      tls: config.redis.url.startsWith('rediss://') ? {} : undefined,
+      tls: needsTls(config.redis.url) ? {} : undefined,
     })
   : new Redis({
       host: config.redis.host,

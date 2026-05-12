@@ -32,9 +32,14 @@ async function bootstrap() {
   // 2. Connect to MongoDB
   await connectDatabase();
 
-  // 3. Connect to Redis (ioredis connects lazily, but we can ping to verify)
-  await redisClient.ping();
-  logger.info('Redis connection established');
+  // 3. Connect to Redis — non-fatal so a Redis misconfiguration doesn't
+  //    crash the whole service; rate-limiting features will degrade gracefully.
+  try {
+    await redisClient.ping();
+    logger.info('Redis connection established');
+  } catch (err) {
+    logger.warn('Redis ping failed — continuing without Redis.', err);
+  }
 
   // 4. Seed billing plans (idempotent)
   await billingService.seedPlans();
