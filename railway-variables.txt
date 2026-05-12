@@ -26,16 +26,21 @@ JWT_REFRESH_SECRET=<PREENCHER_OUTRA_STRING_LONGA_E_ALEATORIA>
 JWT_REFRESH_EXPIRES_IN=7d
 
 # ─── MongoDB ──────────────────────────────────────────────────
-# Opção A: Plugin MongoDB do Railway → copie a variável MONGO_URL gerada
-# Opção B: MongoDB Atlas → cole sua connection string abaixo
-MONGO_URI=mongodb://mongo:KPXcytZ4lLf3FpxuqE1adSz5sTjIivY6@mongodb.railway.internal:27017/compliance?authSource=admin
+# OPÇÃO A (Railway plugin):
+#   1. No projeto Railway → + Create → Database → Add MongoDB
+#   2. Clique no serviço MongoDB → Variables → copie MONGO_URL
+#   3. Cole aqui o valor copiado (use o host proxy, ex: roundhouse.proxy.rlwy.net)
+# OPÇÃO B (MongoDB Atlas):
+#   mongodb+srv://usuario:senha@cluster.mongodb.net/compliance?retryWrites=true&w=majority
+#
+# ⚠️  mongodb.railway.internal SÓ funciona com o plugin ativo no mesmo projeto
+MONGO_URI=<COLE_AQUI_A_MONGO_URL_DO_PLUGIN_OU_ATLAS>
 
 # ─── Redis ────────────────────────────────────────────────────
-# Opção A: Plugin Redis do Railway → use as variáveis REDIS_HOST, REDIS_PORT e REDIS_PASSWORD geradas
-# Opção B: Redis externo (Upstash, etc.) → preencha manualmente
-REDIS_HOST=redis.railway.internal
-REDIS_PORT=6379
-REDIS_PASSWORD=hZ4V3Oz7inDSUQts2HWpMblkBqCPToF1
+# Use REDIS_URL para conexão direta (Upstash, Railway plugin, etc.)
+# Formato: redis://default:SENHA@host:6379
+# Formato TLS:  rediss://default:SENHA@host:6380
+REDIS_URL=redis://default:<SENHA>@<HOST>:<PORTA>
 
 # ─── Claude AI ────────────────────────────────────────────────
 ANTHROPIC_API_KEY=<PREENCHER_SUA_CHAVE_ANTHROPIC>

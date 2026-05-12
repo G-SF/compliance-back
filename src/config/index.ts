@@ -34,6 +34,7 @@ export const config = {
   },
 
   redis: {
+    url: process.env['REDIS_URL'] ?? null,
     host: optionalEnv('REDIS_HOST', 'localhost'),
     port: parseInt(optionalEnv('REDIS_PORT', '6379'), 10),
     password: optionalEnv('REDIS_PASSWORD', ''),
