@@ -1,0 +1,43 @@
+# ============================================================
+#  RAILWAY — Variáveis de Ambiente (copie e cole em Variables)
+# ============================================================
+# Como usar:
+#  1. Acesse seu projeto no Railway
+#  2. Vá em Variables > RAW Editor
+#  3. Cole o bloco abaixo (ajuste os valores marcados com <PREENCHER>)
+# ============================================================
+
+# ─── Application ──────────────────────────────────────────────
+NODE_ENV=production
+# PORT é definido automaticamente pelo Railway — NÃO adicione aqui
+
+# ─── CORS ─────────────────────────────────────────────────────
+# URL do seu frontend no Railway (ou Vercel/Netlify)
+CORS_ORIGIN=https://complience-front.vercel.app
+
+# ─── Frontend ─────────────────────────────────────────────────
+FRONTEND_URL=https://complience-front.vercel.app
+
+# ─── JWT ──────────────────────────────────────────────────────
+# IMPORTANTE: troque por strings longas e aleatórias em produção!
+JWT_SECRET=<PREENCHER_STRING_LONGA_E_ALEATORIA>
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_SECRET=<PREENCHER_OUTRA_STRING_LONGA_E_ALEATORIA>
+JWT_REFRESH_EXPIRES_IN=7d
+
+# ─── MongoDB ──────────────────────────────────────────────────
+# Opção A: Plugin MongoDB do Railway → copie a variável MONGO_URL gerada
+# Opção B: MongoDB Atlas → cole sua connection string abaixo
+MONGO_URI=mongodb://mongo:KPXcytZ4lLf3FpxuqE1adSz5sTjIivY6@mongodb.railway.internal:27017/compliance?authSource=admin
+
+# ─── Redis ────────────────────────────────────────────────────
+# Opção A: Plugin Redis do Railway → use as variáveis REDIS_HOST, REDIS_PORT e REDIS_PASSWORD geradas
+# Opção B: Redis externo (Upstash, etc.) → preencha manualmente
+REDIS_HOST=redis.railway.internal
+REDIS_PORT=6379
+REDIS_PASSWORD=hZ4V3Oz7inDSUQts2HWpMblkBqCPToF1
+
+# ─── Claude AI ────────────────────────────────────────────────
+ANTHROPIC_API_KEY=<PREENCHER_SUA_CHAVE_ANTHROPIC>
+CLAUDE_MODEL=claude-haiku-4-5
+CLAUDE_MAX_TOKENS=4096
