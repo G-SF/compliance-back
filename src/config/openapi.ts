@@ -15,8 +15,8 @@ export const openApiSpec = {
       'Historico de analises por usuario.',
   },
   servers: [
+    { url: 'https://compliance-back-production.up.railway.app', description: 'Produção (Railway)' },
     { url: 'http://localhost:3000', description: 'Local (dev)' },
-    { url: 'http://localhost:3001', description: 'Local alternativo' },
   ],
   security: [{ bearerAuth: [] }],
   components: {
