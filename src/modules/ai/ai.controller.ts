@@ -242,7 +242,7 @@ export const aiController = {
         prompt,
         systemPrompt: ASK_WITH_FILE_SYSTEM_PROMPT,
         // Markdown com 6 seções; 2 000 tokens é 3× o output típico (~675 tokens)
-        maxTokens: 2000,
+        maxTokens: 3000,
       });
 
       // Persist to history (non-blocking)
@@ -250,28 +250,43 @@ export const aiController = {
       const primaryFile = files && files.length > 0 ? files[0] : null;
       const rawExt = primaryFile?.originalname.split('.').pop()?.toLowerCase() ?? null;
 
-      // Pre-generate analysisId so we can return it before the non-blocking DB write
-      const analysisObjectId = new Types.ObjectId();
+      // Pre-generate analysisId to return in the response
+      const analysisObjectId = dto.analysisId
+        ? new Types.ObjectId(dto.analysisId)
+        : new Types.ObjectId();
 
-      AnalysisModel.create({
-        _id: analysisObjectId,
-        userId,
-        fileName: primaryFile?.originalname ?? null,
-        fileExtension: rawExt ? `.${rawExt}` : null,
-        analysisType: 'ask',
-        status: 'completed',
-        analysis: null,
-        rawResponse: result.text,
-        riskLevel: null,
-        riskScore: null,
-        aiModel: result.model,
-        inputTokens: result.inputTokens,
-        outputTokens: result.outputTokens,
-        costUsd: result.costUsd,
-        errorMessage: null,
-      }).catch(() => {
-        /* ignore save errors */
-      });
+      if (dto.analysisId) {
+        // Link the answer to the existing generate-with-files analysis (no orphan entry)
+        AnalysisModel.findOneAndUpdate(
+          { _id: dto.analysisId, userId },
+          { $set: { question: dto.question, questionResponse: result.text } },
+        ).catch((err: unknown) => {
+          logger.warn('[AI] Failed to link ask response to analysis', { error: err });
+        });
+      } else {
+        // Standalone ask (no parent analysis) — create its own history entry
+        AnalysisModel.create({
+          _id: analysisObjectId,
+          userId,
+          fileName: primaryFile?.originalname ?? null,
+          fileExtension: rawExt ? `.${rawExt}` : null,
+          analysisType: 'ask',
+          status: 'completed',
+          analysis: null,
+          rawResponse: result.text,
+          question: dto.question,
+          questionResponse: result.text,
+          riskLevel: null,
+          riskScore: null,
+          aiModel: result.model,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          costUsd: result.costUsd,
+          errorMessage: null,
+        }).catch(() => {
+          /* ignore save errors */
+        });
+      }
 
       res.json(
         ApiResponse.success({

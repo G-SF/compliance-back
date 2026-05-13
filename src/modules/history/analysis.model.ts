@@ -33,6 +33,11 @@ export interface IAnalysis extends Document {
   /** Resposta bruta do modelo (sempre presente) */
   rawResponse: string;
 
+  /** Pergunta feita pelo usuário via /ask (vinculada a esta análise) */
+  question: string | null;
+  /** Resposta em Markdown gerada pelo /ask vinculado a esta análise */
+  questionResponse: string | null;
+
   /** Extraído de analysis.risco para facilitar queries / listagem */
   riskLevel: 'baixo' | 'médio' | 'alto' | null;
   riskScore: number | null; // 0 – 10
@@ -62,6 +67,9 @@ const analysisSchema = new Schema<IAnalysis>(
 
     analysis: { type: Schema.Types.Mixed, default: null },
     rawResponse: { type: String, required: true },
+
+    question: { type: String, default: null },
+    questionResponse: { type: String, default: null },
 
     riskLevel: { type: String, enum: ['baixo', 'médio', 'alto', null], default: null },
     riskScore: { type: Number, default: null },

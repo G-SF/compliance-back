@@ -80,7 +80,16 @@ export async function extractTextFromFile(
     }
 
     case '.docx': {
-      const result = await mammoth.extractRawText({ buffer });
+      // multer v2 memoryStorage pode retornar um Buffer com byteOffset != 0 no
+      // ArrayBuffer subjacente (fatia de buffer compartilhado). O JSZip (usado
+      // internamente pelo mammoth) lê o ArrayBuffer a partir do offset 0,
+      // ignorando o byteOffset do Buffer — o que torna o ZIP inválido.
+      // Solução: extrair um ArrayBuffer standalone com o slice correto.
+      const arrayBuffer = buffer.buffer.slice(
+        buffer.byteOffset,
+        buffer.byteOffset + buffer.byteLength,
+      ) as ArrayBuffer;
+      const result = await mammoth.extractRawText({ arrayBuffer });
       raw = result.value;
       break;
     }

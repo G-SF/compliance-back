@@ -15,12 +15,16 @@ export interface GenerateWithFilesDto {
 /**
  * ask-with-file (freemium): user must send a question about the file.
  * documentId is optional — when provided, enables per-contract question tracking.
+ * analysisId is optional — when provided, the answer is stored in the existing analysis
+ * instead of creating a new orphaned history entry.
  */
 export interface AskWithFileDto {
   question: string;
   contractText?: string;
   /** documentId returned by /ai/generate-with-files — enables per-contract limit tracking */
   documentId?: string;
+  /** analysisId returned by /ai/generate-with-files — links the ask response to the analysis */
+  analysisId?: string;
 }
 
 export function validateGenerateWithFilesDto(body: unknown): GenerateWithFilesDto {
@@ -62,5 +66,6 @@ export function validateAskWithFileDto(body: unknown): AskWithFileDto {
     question: b.question.trim(),
     contractText: typeof b.contractText === 'string' ? b.contractText.trim() : undefined,
     documentId: typeof b.documentId === 'string' ? b.documentId.trim() : undefined,
+    analysisId: typeof b.analysisId === 'string' ? b.analysisId.trim() : undefined,
   };
 }
