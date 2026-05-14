@@ -82,10 +82,19 @@ export async function extractTextFromFile(
     }
 
     case '.docx': {
-      // Todas as bibliotecas ZIP em memória (JSZip, PizZip) sofrem com o pool
-      // de buffers compartilhados do multer v2 (byteOffset != 0). A solução
-      // definitiva é gravar o buffer em arquivo temporário e passar o caminho
-      // ao mammoth, que lê do disco sem nenhum problema de buffer.
+      // DOCX é um ZIP — os primeiros 2 bytes devem ser 'PK' (0x50 0x4B).
+      // Se não forem, o arquivo não é um DOCX válido (ex.: formato .doc legado
+      // ou arquivo corrompido) e devemos retornar um erro claro ao usuário.
+      if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+        const err = new Error(
+          `O arquivo "${filename}" não é um DOCX válido. ` +
+            'Certifique-se de enviar um arquivo no formato .docx (Word 2007+). ' +
+            'Arquivos .doc (formato legado) não são suportados.',
+        );
+        (err as Error & { statusCode: number }).statusCode = 400;
+        throw err;
+      }
+
       const tmpPath = path.join(
         os.tmpdir(),
         `docx_${Date.now()}_${Math.random().toString(36).slice(2)}.docx`,
