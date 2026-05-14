@@ -8,7 +8,7 @@
  * Supported: .txt, .pdf, .docx
  */
 
-import mammoth from 'mammoth';
+import PizZip from 'pizzip';
 import path from 'path';
 import { processPdfForAi } from './pdf-processor';
 
@@ -80,13 +80,23 @@ export async function extractTextFromFile(
     }
 
     case '.docx': {
-      // multer memoryStorage pode retornar um Buffer cujo byteOffset != 0 no
-      // ArrayBuffer subjacente. O mammoth repassa esse ArrayBuffer ao JSZip que
-      // lê a partir do offset 0, corrompendo o ZIP. Buffer.from() copia os
-      // bytes para um novo Buffer com byteOffset = 0, garantindo leitura correta.
-      const safeBuffer = Buffer.from(buffer);
-      const result = await mammoth.extractRawText({ buffer: safeBuffer });
-      raw = result.value;
+      // Usa PizZip (fork do JSZip otimizado para Office Open XML) para
+      // descompactar o DOCX e extrai o texto de word/document.xml sem depender
+      // do mammoth, que repassa o ArrayBuffer ao JSZip com byteOffset errado.
+      const zip = new PizZip(buffer);
+      const xmlFile = zip.files['word/document.xml'];
+      if (!xmlFile) throw new Error('Arquivo DOCX inválido: word/document.xml não encontrado.');
+      const xml = xmlFile.asText();
+      // Preserva quebras de parágrafo (<w:p>) e remove demais tags XML
+      raw = xml
+        .replace(/<w:br[^>]*\/>/gi, '\n')
+        .replace(/<\/w:p>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'");
       break;
     }
 
