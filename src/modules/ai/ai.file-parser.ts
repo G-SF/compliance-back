@@ -80,10 +80,12 @@ export async function extractTextFromFile(
     }
 
     case '.docx': {
-      // Passa o Buffer diretamente ao mammoth — suportado pela API Node.js do
-      // mammoth e evita problemas de byteOffset com ArrayBuffer de buffers
-      // compartilhados (multer memoryStorage).
-      const result = await mammoth.extractRawText({ buffer });
+      // multer memoryStorage pode retornar um Buffer cujo byteOffset != 0 no
+      // ArrayBuffer subjacente. O mammoth repassa esse ArrayBuffer ao JSZip que
+      // lê a partir do offset 0, corrompendo o ZIP. Buffer.from() copia os
+      // bytes para um novo Buffer com byteOffset = 0, garantindo leitura correta.
+      const safeBuffer = Buffer.from(buffer);
+      const result = await mammoth.extractRawText({ buffer: safeBuffer });
       raw = result.value;
       break;
     }
