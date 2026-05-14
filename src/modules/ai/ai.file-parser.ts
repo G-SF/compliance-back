@@ -8,7 +8,9 @@
  * Supported: .txt, .pdf, .docx
  */
 
-import PizZip from 'pizzip';
+import mammoth from 'mammoth';
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { processPdfForAi } from './pdf-processor';
 
@@ -80,26 +82,25 @@ export async function extractTextFromFile(
     }
 
     case '.docx': {
-      // multer memoryStorage retorna um Buffer cujo byteOffset pode ser != 0
-      // (fatia do pool interno do Node.js). PizZip/JSZip acessam .buffer (o
-      // ArrayBuffer inteiro) ignorando byteOffset, lendo dados inválidos.
-      // ArrayBuffer.slice() cria uma cópia standalone com byteOffset = 0,
-      // garantindo que o ZIP seja lido corretamente.
-      const safeAB = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-      const zip = new PizZip(safeAB);
-      const xmlFile = zip.files['word/document.xml'];
-      if (!xmlFile) throw new Error('Arquivo DOCX inválido: word/document.xml não encontrado.');
-      const xml = xmlFile.asText();
-      // Preserva quebras de parágrafo (<w:p>) e remove demais tags XML
-      raw = xml
-        .replace(/<w:br[^>]*\/>/gi, '\n')
-        .replace(/<\/w:p>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&apos;/g, "'");
+      // Todas as bibliotecas ZIP em memória (JSZip, PizZip) sofrem com o pool
+      // de buffers compartilhados do multer v2 (byteOffset != 0). A solução
+      // definitiva é gravar o buffer em arquivo temporário e passar o caminho
+      // ao mammoth, que lê do disco sem nenhum problema de buffer.
+      const tmpPath = path.join(
+        os.tmpdir(),
+        `docx_${Date.now()}_${Math.random().toString(36).slice(2)}.docx`,
+      );
+      try {
+        fs.writeFileSync(tmpPath, buffer);
+        const result = await mammoth.extractRawText({ path: tmpPath });
+        raw = result.value;
+      } finally {
+        try {
+          fs.unlinkSync(tmpPath);
+        } catch {
+          /* ignora falha na limpeza */
+        }
+      }
       break;
     }
 
