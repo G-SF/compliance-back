@@ -84,12 +84,15 @@ export async function extractTextFromFile(
 
     case '.docx': {
       // Log de diagnóstico para inspecionar o buffer recebido do multer
+      const _ab = buffer.buffer;
       logger.info(
         `[docx-debug] filename=${filename} | ` +
           `Buffer.isBuffer=${Buffer.isBuffer(buffer)} | ` +
           `length=${buffer?.length} | ` +
           `byteOffset=${buffer?.byteOffset} | ` +
-          `first8bytes=${buffer?.slice(0, 8).toString('hex')}`,
+          `abSize=${_ab.byteLength} | ` +
+          `abFirst8=${Buffer.from(_ab).subarray(0, 8).toString('hex')} | ` +
+          `bufFirst8=${buffer.subarray(0, 8).toString('hex')}`,
       );
 
       // DOCX é um ZIP — os primeiros 2 bytes devem ser 'PK' (0x50 0x4B).
