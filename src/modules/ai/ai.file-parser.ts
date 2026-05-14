@@ -80,10 +80,13 @@ export async function extractTextFromFile(
     }
 
     case '.docx': {
-      // Usa PizZip (fork do JSZip otimizado para Office Open XML) para
-      // descompactar o DOCX e extrai o texto de word/document.xml sem depender
-      // do mammoth, que repassa o ArrayBuffer ao JSZip com byteOffset errado.
-      const zip = new PizZip(buffer);
+      // multer memoryStorage retorna um Buffer cujo byteOffset pode ser != 0
+      // (fatia do pool interno do Node.js). PizZip/JSZip acessam .buffer (o
+      // ArrayBuffer inteiro) ignorando byteOffset, lendo dados inválidos.
+      // ArrayBuffer.slice() cria uma cópia standalone com byteOffset = 0,
+      // garantindo que o ZIP seja lido corretamente.
+      const safeAB = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      const zip = new PizZip(safeAB);
       const xmlFile = zip.files['word/document.xml'];
       if (!xmlFile) throw new Error('Arquivo DOCX inválido: word/document.xml não encontrado.');
       const xml = xmlFile.asText();
