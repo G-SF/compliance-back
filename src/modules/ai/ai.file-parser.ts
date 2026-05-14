@@ -13,6 +13,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { processPdfForAi } from './pdf-processor';
+import { logger } from '../../shared/utils/logger';
 
 export const ALLOWED_EXTENSIONS = ['.txt', '.pdf', '.docx'];
 
@@ -82,6 +83,15 @@ export async function extractTextFromFile(
     }
 
     case '.docx': {
+      // Log de diagnóstico para inspecionar o buffer recebido do multer
+      logger.info(
+        `[docx-debug] filename=${filename} | ` +
+          `Buffer.isBuffer=${Buffer.isBuffer(buffer)} | ` +
+          `length=${buffer?.length} | ` +
+          `byteOffset=${buffer?.byteOffset} | ` +
+          `first8bytes=${buffer?.slice(0, 8).toString('hex')}`,
+      );
+
       // DOCX é um ZIP — os primeiros 2 bytes devem ser 'PK' (0x50 0x4B).
       // Se não forem, o arquivo não é um DOCX válido (ex.: formato .doc legado
       // ou arquivo corrompido) e devemos retornar um erro claro ao usuário.
