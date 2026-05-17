@@ -14,6 +14,7 @@
  */
 
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { UserModel, IUser, UserRole } from './models/user.model';
@@ -39,6 +40,10 @@ function refreshTokenKey(userId: string, tokenId: string): string {
 
 function emailVerifyKey(userId: string): string {
   return `email_verify:${userId}`;
+}
+
+function passwordResetKey(token: string): string {
+  return `pwd_reset:${token}`;
 }
 
 function generateVerificationCode(): string {
@@ -267,6 +272,52 @@ export class AuthService {
 
   async findById(userId: string): Promise<IUser | null> {
     return UserModel.findById(userId);
+  }
+
+  /**
+   * POST /forgot-password
+   * Generates a secure reset token, stores it in Redis (1 h TTL), and sends
+   * a link to the user's email. Never reveals whether the email exists.
+   */
+  async forgotPassword(email: string): Promise<void> {
+    const user = await UserModel.findOne({ email: email.toLowerCase().trim() });
+
+    // Always resolve successfully to avoid email-enumeration attacks
+    if (!user) return;
+
+    // Google-only accounts have no password — skip silently
+    if (!user.password) return;
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await redisService.set(passwordResetKey(token), user._id.toString(), 3600); // 1 h TTL
+
+    const resetUrl = `${config.billing.frontendUrl}/reset-password?token=${token}`;
+
+    emailService
+      .sendPasswordReset(user.email, user.name, resetUrl)
+      .catch((err: unknown) =>
+        console.error('[AuthService] Failed to send password reset email:', (err as Error).message),
+      );
+  }
+
+  /**
+   * POST /reset-password
+   * Validates the token, hashes the new password, updates the user, and
+   * removes the token from Redis so it cannot be reused.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const userId = await redisService.get(passwordResetKey(token));
+    if (!userId) {
+      throw Object.assign(new Error('Invalid or expired reset token'), { statusCode: 400 });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    const user = await UserModel.findByIdAndUpdate(userId, { password: hashed });
+    if (!user) {
+      throw Object.assign(new Error('User not found'), { statusCode: 404 });
+    }
+
+    await redisService.del(passwordResetKey(token));
   }
 }
 

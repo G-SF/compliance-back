@@ -20,6 +20,10 @@ authRouter.post('/logout', authController.logout);
 authRouter.post('/verify-email', authController.verifyEmail);
 authRouter.post('/resend-code', authController.resendCode);
 
+// Password reset
+authRouter.post('/forgot-password', authController.forgotPassword);
+authRouter.post('/reset-password', authController.resetPassword);
+
 // Google OAuth
 authRouter.get(
   '/google',

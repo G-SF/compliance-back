@@ -12,6 +12,8 @@ import {
   validateLoginDto,
   validateRefreshTokenDto,
   validateVerifyEmailDto,
+  validateForgotPasswordDto,
+  validateResetPasswordDto,
 } from './auth.dto';
 import { ApiResponse } from '../../shared/utils/response.util';
 import { AuthenticatedRequest } from '../../shared/middleware/auth.middleware';
@@ -166,6 +168,33 @@ export const authController = {
       res.redirect(`${config.billing.frontendUrl}/auth/callback?${params.toString()}`);
     } catch {
       res.redirect(`${config.billing.frontendUrl}/login?error=oauth_failed`);
+    }
+  },
+
+  /**
+   * POST /forgot-password — sends password reset link to the user's email.
+   * Always returns 200 to prevent email-enumeration.
+   */
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email } = validateForgotPasswordDto(req.body);
+      await authService.forgotPassword(email);
+      res.json(ApiResponse.success(null, 'If that email exists, a reset link was sent.'));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * POST /reset-password — validates token and sets a new password.
+   */
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token, password } = validateResetPasswordDto(req.body);
+      await authService.resetPassword(token, password);
+      res.json(ApiResponse.success(null, 'Password reset successfully.'));
+    } catch (err) {
+      next(err);
     }
   },
 };

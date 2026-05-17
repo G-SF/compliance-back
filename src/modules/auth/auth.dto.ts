@@ -25,6 +25,15 @@ export interface VerifyEmailDto {
   code: string;
 }
 
+export interface ForgotPasswordDto {
+  email: string;
+}
+
+export interface ResetPasswordDto {
+  token: string;
+  password: string;
+}
+
 // ── Validation helpers ──────────────────────────────────────────────────────
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,4 +89,27 @@ export function validateVerifyEmailDto(body: unknown): VerifyEmailDto {
   }
 
   return { userId: dto.userId, code: dto.code };
+}
+
+export function validateForgotPasswordDto(body: unknown): ForgotPasswordDto {
+  const dto = body as Record<string, unknown>;
+
+  if (!dto.email || typeof dto.email !== 'string' || !EMAIL_REGEX.test(dto.email as string)) {
+    throw Object.assign(new Error('A valid email is required'), { statusCode: 400 });
+  }
+
+  return { email: (dto.email as string).toLowerCase().trim() };
+}
+
+export function validateResetPasswordDto(body: unknown): ResetPasswordDto {
+  const dto = body as Record<string, unknown>;
+
+  if (!dto.token || typeof dto.token !== 'string' || dto.token.length < 10) {
+    throw Object.assign(new Error('token is required'), { statusCode: 400 });
+  }
+  if (!dto.password || typeof dto.password !== 'string' || (dto.password as string).length < 8) {
+    throw Object.assign(new Error('Password must be at least 8 characters'), { statusCode: 400 });
+  }
+
+  return { token: dto.token, password: dto.password };
 }

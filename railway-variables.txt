@@ -12,28 +12,21 @@ NODE_ENV=production
 # PORT é definido automaticamente pelo Railway — NÃO adicione aqui
 
 # ─── CORS ─────────────────────────────────────────────────────
-# URL do seu frontend no Railway (ou Vercel/Netlify)
+# URL do seu frontend no Railway
 CORS_ORIGIN=https://complience-front.vercel.app
 
 # ─── Frontend ─────────────────────────────────────────────────
 FRONTEND_URL=https://complience-front.vercel.app
 
 # ─── JWT ──────────────────────────────────────────────────────
-# IMPORTANTE: troque por strings longas e aleatórias em produção!
 JWT_SECRET=<PREENCHER_STRING_LONGA_E_ALEATORIA>
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_SECRET=<PREENCHER_OUTRA_STRING_LONGA_E_ALEATORIA>
 JWT_REFRESH_EXPIRES_IN=7d
 
 # ─── MongoDB ──────────────────────────────────────────────────
-# OPÇÃO A (Railway plugin):
-#   1. No projeto Railway → + Create → Database → Add MongoDB
-#   2. Clique no serviço MongoDB → Variables → copie MONGO_URL
-#   3. Cole aqui o valor copiado (use o host proxy, ex: roundhouse.proxy.rlwy.net)
-# OPÇÃO B (MongoDB Atlas):
+# (MongoDB Atlas):
 #   mongodb+srv://usuario:senha@cluster.mongodb.net/compliance?retryWrites=true&w=majority
-#
-# ⚠️  mongodb.railway.internal SÓ funciona com o plugin ativo no mesmo projeto
 MONGO_URI=<COLE_AQUI_A_MONGO_URL_DO_PLUGIN_OU_ATLAS>
 
 # ─── Redis ────────────────────────────────────────────────────
@@ -43,22 +36,19 @@ MONGO_URI=<COLE_AQUI_A_MONGO_URL_DO_PLUGIN_OU_ATLAS>
 REDIS_URL=rediss://default:<SENHA>@<HOST>:6380
 
 # ─── Claude AI ────────────────────────────────────────────────
-ANTHROPIC_API_KEY=<PREENCHER_SUA_CHAVE_ANTHROPIC>
+ANTHROPIC_API_KEY=
 CLAUDE_MODEL=claude-haiku-4-5
 CLAUDE_MAX_TOKENS=4096
 
 # ─── Google OAuth ─────────────────────────────────────────────
-# 1. Acesse https://console.cloud.google.com/
-# 2. Crie um projeto → Credentials → Create Credentials → OAuth 2.0 Client ID
-# 3. Tipo: Web application
-# 4. Authorized redirect URIs: https://<SEU_BACKEND>/api/v1/auth/google/callback
+# Authorized redirect URIs: https://<SEU_BACKEND>/api/v1/auth/google/callback
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=
 
 # ─── Email — Resend HTTP API ─────────────────────────────────
-# Gere sua API Key em https://resend.com/api-keys
+# https://resend.com/api-keys
 # Use EMAIL_FROM com um domínio verificado no Resend, ou
 # mantenha onboarding@resend.dev para envio de teste (só para o email do owner).
-RESEND_API_KEY=re_NxptWsqi_G5u2VGtecPFtqPthbFvjXNw4
+RESEND_API_KEY=
 EMAIL_FROM=Contracta <onboarding@resend.dev>

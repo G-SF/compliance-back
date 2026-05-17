@@ -71,6 +71,21 @@ export const openApiSpec = {
           userId: { type: 'string', example: '6634a1b2c3d4e5f6a7b8c9d0' },
         },
       },
+      ForgotPasswordRequest: {
+        type: 'object',
+        required: ['email'],
+        properties: {
+          email: { type: 'string', format: 'email', example: 'usuario@empresa.com' },
+        },
+      },
+      ResetPasswordRequest: {
+        type: 'object',
+        required: ['token', 'password'],
+        properties: {
+          token: { type: 'string', example: 'a1b2c3d4e5f6...' },
+          password: { type: 'string', minLength: 8, example: 'NovaSenha@123' },
+        },
+      },
       RegisterResult: {
         type: 'object',
         properties: {
@@ -594,6 +609,59 @@ export const openApiSpec = {
           },
           '404': {
             description: 'Usuário não encontrado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/auth/forgot-password': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Solicitar redefinição de senha',
+        description:
+          'Envia um link de redefinição para o email informado. ' +
+          'Sempre retorna 200 para evitar enumeração de emails. ' +
+          'O token expira em 1 hora.',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ForgotPasswordRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Link de redefinição enviado (se o email existir)' },
+          '400': {
+            description: 'Email inválido',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/auth/reset-password': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Redefinir senha',
+        description: 'Valida o token recebido por email e atualiza a senha do usuário.',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ResetPasswordRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Senha redefinida com sucesso' },
+          '400': {
+            description: 'Token inválido/expirado ou senha fraca',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },
