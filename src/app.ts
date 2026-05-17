@@ -13,6 +13,7 @@
 
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import passport from 'passport';
 import { apiReference } from '@scalar/express-api-reference';
 import { authRouter } from './modules/auth/auth.routes';
@@ -25,9 +26,31 @@ import { errorMiddleware } from './shared/middleware/error.middleware';
 import { ApiResponse } from './shared/utils/response.util';
 import { openApiSpec } from './config/openapi';
 import { configurePassport } from './modules/auth/passport.strategy';
+import { globalRateLimit } from './shared/middleware/rate-limit.middleware';
 
 export function createApp(): Application {
   const app = express();
+
+  // ── Security headers (helmet) ────────────────────────────────────────────
+  // Applied before everything else so every response gets the headers.
+  // Content-Security-Policy is intentionally relaxed for the /docs UI.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'fonts.googleapis.com', 'cdn.jsdelivr.net'],
+          fontSrc: ["'self'", 'fonts.gstatic.com', 'cdn.jsdelivr.net'],
+          imgSrc: ["'self'", 'data:', 'cdn.jsdelivr.net'],
+          connectSrc: ["'self'"],
+        },
+      },
+    }),
+  );
+
+  // ── Global rate limit ───────────────────────────────────────────────────
+  app.use(globalRateLimit);
 
   // ── Passport (Google OAuth) ─────────────────────────────────────────────────
   configurePassport();

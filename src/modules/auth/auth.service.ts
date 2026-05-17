@@ -47,7 +47,8 @@ function passwordResetKey(token: string): string {
 }
 
 function generateVerificationCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  // crypto.randomInt is cryptographically secure (unlike Math.random)
+  return String(crypto.randomInt(100000, 1000000));
 }
 
 export interface AuthTokens {

@@ -14,7 +14,10 @@ import { requireCredits, requireQuestion } from '../../shared/middleware/credits
 // Keep files in memory — we only need the text content, no disk I/O required
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB por arquivo (PDFs podem ser maiores que TXTs)
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB per file
+    files: 5,                    // max 5 files per request
+  },
 });
 
 export const aiRouter = Router();

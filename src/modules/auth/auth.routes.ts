@@ -7,22 +7,29 @@ import passport from 'passport';
 import { authController } from './auth.controller';
 import { authMiddleware } from '../../shared/middleware/auth.middleware';
 import { requireRole } from '../../shared/middleware/role.middleware';
+import {
+  loginRateLimit,
+  registerRateLimit,
+  verifyEmailRateLimit,
+  forgotPasswordRateLimit,
+  resetPasswordRateLimit,
+} from '../../shared/middleware/rate-limit.middleware';
 
 export const authRouter = Router();
 
 // Public
-authRouter.post('/register', authController.register);
-authRouter.post('/login', authController.login);
+authRouter.post('/register', registerRateLimit, authController.register);
+authRouter.post('/login', loginRateLimit, authController.login);
 authRouter.post('/refresh', authController.refresh);
 authRouter.post('/logout', authController.logout);
 
 // Email verification
-authRouter.post('/verify-email', authController.verifyEmail);
-authRouter.post('/resend-code', authController.resendCode);
+authRouter.post('/verify-email', verifyEmailRateLimit, authController.verifyEmail);
+authRouter.post('/resend-code', verifyEmailRateLimit, authController.resendCode);
 
 // Password reset
-authRouter.post('/forgot-password', authController.forgotPassword);
-authRouter.post('/reset-password', authController.resetPassword);
+authRouter.post('/forgot-password', forgotPasswordRateLimit, authController.forgotPassword);
+authRouter.post('/reset-password', resetPasswordRateLimit, authController.resetPassword);
 
 // Google OAuth
 authRouter.get(

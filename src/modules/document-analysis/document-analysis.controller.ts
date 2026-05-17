@@ -159,7 +159,7 @@ export const documentAnalysisController = {
       }
 
       const baseName = docRecord.fileName
-        ? docRecord.fileName.replace(/\.[^.]+$/, '')
+        ? docRecord.fileName.replace(/\.[^.]+$/, '').replace(/[^\w\s.-]/g, '_').slice(0, 100)
         : 'documento-corrigido';
 
       const hasBuffer = docRecord.originalFileBuffer && docRecord.originalFileBuffer.length > 0;

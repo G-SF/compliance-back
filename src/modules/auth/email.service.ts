@@ -195,7 +195,9 @@ export const emailService = {
     const resend = buildResendClient();
 
     if (!resend) {
-      console.log(`\n[EmailService] ⚠️  RESEND_API_KEY not set. Reset URL for ${to}: ${resetUrl}\n`);
+      console.log(
+        `\n[EmailService] ⚠️  RESEND_API_KEY not set. Reset URL for ${to}: ${resetUrl}\n`,
+      );
       return;
     }
 

@@ -36,6 +36,12 @@ export function validateGenerateWithFilesDto(body: unknown): GenerateWithFilesDt
     throw err;
   }
 
+  if (typeof b.contractText === 'string' && b.contractText.length > 100_000) {
+    const err = new Error('contractText não pode ultrapassar 100.000 caracteres');
+    (err as NodeJS.ErrnoException & { statusCode: number }).statusCode = 400;
+    throw err;
+  }
+
   return {
     contractText: typeof b.contractText === 'string' ? b.contractText.trim() : undefined,
   };
