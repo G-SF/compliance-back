@@ -45,9 +45,7 @@ export const registerRateLimit = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: tooManyRequestsHandler(
-    'Muitas contas criadas a partir deste IP. Aguarde 1 hora.',
-  ),
+  message: tooManyRequestsHandler('Muitas contas criadas a partir deste IP. Aguarde 1 hora.'),
 });
 
 /**
@@ -60,9 +58,7 @@ export const verifyEmailRateLimit = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: tooManyRequestsHandler(
-    'Muitas tentativas de verificação. Aguarde 15 minutos.',
-  ),
+  message: tooManyRequestsHandler('Muitas tentativas de verificação. Aguarde 15 minutos.'),
 });
 
 /**
@@ -88,9 +84,7 @@ export const resetPasswordRateLimit = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: tooManyRequestsHandler(
-    'Muitas tentativas de redefinição. Aguarde 15 minutos.',
-  ),
+  message: tooManyRequestsHandler('Muitas tentativas de redefinição. Aguarde 15 minutos.'),
 });
 
 /**
