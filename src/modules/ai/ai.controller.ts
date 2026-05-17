@@ -127,7 +127,10 @@ export const aiController = {
       const docHash = crypto.createHash('sha256').update(rawDocumentText, 'utf8').digest('hex');
 
       const primaryFile = files && files.length > 0 ? files[0] : null;
-      const rawExt = primaryFile?.originalname.split('.').pop()?.toLowerCase() ?? null;
+      const primaryFileName = primaryFile
+        ? Buffer.from(primaryFile.originalname, 'latin1').toString('utf8')
+        : null;
+      const rawExt = primaryFileName?.split('.').pop()?.toLowerCase() ?? null;
 
       const docRecord = await DocumentRecordModel.findOneAndUpdate(
         { userId: new Types.ObjectId(userId), hash: docHash },
@@ -140,7 +143,7 @@ export const aiController = {
           },
           // Backfillable fields: always update so old records gain the buffer
           $set: {
-            fileName: primaryFile?.originalname ?? null,
+            fileName: primaryFileName,
             fileExtension: rawExt ? `.${rawExt}` : null,
             ...(primaryFile?.buffer ? { originalFileBuffer: primaryFile.buffer } : {}),
           },
@@ -156,7 +159,7 @@ export const aiController = {
         _id: analysisObjectId,
         userId,
         documentRecordId: docRecord._id,
-        fileName: primaryFile?.originalname ?? null,
+        fileName: primaryFileName,
         fileExtension: rawExt ? `.${rawExt}` : null,
         analysisType: 'generate-with-files',
         status: 'completed',
@@ -248,7 +251,10 @@ export const aiController = {
       // Persist to history (non-blocking)
       const { userId } = req as AuthenticatedRequest;
       const primaryFile = files && files.length > 0 ? files[0] : null;
-      const rawExt = primaryFile?.originalname.split('.').pop()?.toLowerCase() ?? null;
+      const primaryFileName = primaryFile
+        ? Buffer.from(primaryFile.originalname, 'latin1').toString('utf8')
+        : null;
+      const rawExt = primaryFileName?.split('.').pop()?.toLowerCase() ?? null;
 
       // Pre-generate analysisId to return in the response
       const analysisObjectId = dto.analysisId
@@ -268,7 +274,7 @@ export const aiController = {
         AnalysisModel.create({
           _id: analysisObjectId,
           userId,
-          fileName: primaryFile?.originalname ?? null,
+          fileName: primaryFileName,
           fileExtension: rawExt ? `.${rawExt}` : null,
           analysisType: 'ask',
           status: 'completed',

@@ -70,28 +70,32 @@ export class AuthService {
     // Assign free plan on registration
     const freePlan = await PlanModel.findOne({ slug: PLAN_SLUGS.FREE }).catch(() => null);
 
+    const isProduction = config.nodeEnv === 'production';
+
     const hashed = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const user = await UserModel.create({
       email: dto.email,
       password: hashed,
       name: dto.name ?? null,
       role,
-      emailVerified: false,
+      emailVerified: !isProduction,
       planId: freePlan?._id ?? null,
       creditsRemaining: freePlan?.creditAmount ?? 2,
     });
 
-    // Persist the code first (must be awaited — Redis is fast and local)
-    const code = generateVerificationCode();
-    await redisService.set(emailVerifyKey(user._id.toString()), code, 900); // 15 min TTL
+    if (isProduction) {
+      // Persist the code first (must be awaited — Redis is fast and local)
+      const code = generateVerificationCode();
+      await redisService.set(emailVerifyKey(user._id.toString()), code, 900); // 15 min TTL
 
-    // Fire-and-forget: email delivery must never block the HTTP response.
-    // Errors are logged but do not propagate to the caller.
-    emailService
-      .sendVerificationCode(user.email, code, user.name)
-      .catch((err: unknown) =>
-        console.error('[AuthService] Failed to send verification email:', (err as Error).message),
-      );
+      // Fire-and-forget: email delivery must never block the HTTP response.
+      // Errors are logged but do not propagate to the caller.
+      emailService
+        .sendVerificationCode(user.email, code, user.name)
+        .catch((err: unknown) =>
+          console.error('[AuthService] Failed to send verification email:', (err as Error).message),
+        );
+    }
 
     return { userId: user._id.toString(), email: user.email };
   }
@@ -185,7 +189,7 @@ export class AuthService {
       throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
     }
 
-    if (!user.emailVerified) {
+    if (!user.emailVerified && config.nodeEnv === 'production') {
       throw Object.assign(
         Object.assign(new Error('Email not verified'), {
           statusCode: 403,
