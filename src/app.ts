@@ -13,6 +13,7 @@
 
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import passport from 'passport';
 import { apiReference } from '@scalar/express-api-reference';
 import { authRouter } from './modules/auth/auth.routes';
 import { aiRouter } from './modules/ai/ai.routes';
@@ -23,9 +24,14 @@ import { billingRouter } from './modules/billing/billing.routes';
 import { errorMiddleware } from './shared/middleware/error.middleware';
 import { ApiResponse } from './shared/utils/response.util';
 import { openApiSpec } from './config/openapi';
+import { configurePassport } from './modules/auth/passport.strategy';
 
 export function createApp(): Application {
   const app = express();
+
+  // ── Passport (Google OAuth) ─────────────────────────────────────────────────
+  configurePassport();
+  app.use(passport.initialize());
 
   // ── CORS ────────────────────────────────────────────────────────────────────
   app.use(

@@ -35,6 +35,7 @@ export const openApiSpec = {
         properties: {
           email: { type: 'string', format: 'email', example: 'usuario@empresa.com' },
           password: { type: 'string', minLength: 8, example: 'senhaSegura123' },
+          name: { type: 'string', example: 'João Silva' },
         },
       },
       LoginRequest: {
@@ -54,6 +55,35 @@ export const openApiSpec = {
         type: 'object',
         required: ['refreshToken'],
         properties: { refreshToken: { type: 'string', example: 'eyJhbGci...' } },
+      },
+      VerifyEmailRequest: {
+        type: 'object',
+        required: ['userId', 'code'],
+        properties: {
+          userId: { type: 'string', example: '6634a1b2c3d4e5f6a7b8c9d0' },
+          code: { type: 'string', minLength: 6, maxLength: 6, example: '483921' },
+        },
+      },
+      ResendCodeRequest: {
+        type: 'object',
+        required: ['userId'],
+        properties: {
+          userId: { type: 'string', example: '6634a1b2c3d4e5f6a7b8c9d0' },
+        },
+      },
+      RegisterResult: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: {
+            type: 'object',
+            properties: {
+              userId: { type: 'string', example: '6634a1b2c3d4e5f6a7b8c9d0' },
+              email: { type: 'string', example: 'usuario@empresa.com' },
+            },
+          },
+          message: { type: 'string', example: 'User registered. Please verify your email.' },
+        },
       },
       AuthResponse: {
         type: 'object',
@@ -489,7 +519,7 @@ export const openApiSpec = {
     '/api/v1/auth/register': {
       post: {
         tags: ['Auth'],
-        summary: 'Cadastrar usuario (primeiro vira admin)',
+        summary: 'Cadastrar usuario — envia código de verificação por email',
         security: [],
         requestBody: {
           required: true,
@@ -499,16 +529,102 @@ export const openApiSpec = {
         },
         responses: {
           '201': {
-            description: 'Usuario criado',
+            description: 'Usuário criado — aguarda verificação de email',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/RegisterResult' } },
+            },
+          },
+          '409': {
+            description: 'Email já cadastrado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/auth/verify-email': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Verificar código de 6 dígitos enviado por email',
+        description:
+          'Valida o código recebido por email e retorna tokens JWT. ' +
+          'O código expira em 15 minutos. Use `/resend-code` para solicitar um novo.',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/VerifyEmailRequest' } },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Email verificado — tokens JWT retornados',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/AuthResponse' } },
             },
           },
-          '409': {
-            description: 'Email ja cadastrado',
+          '400': {
+            description: 'Código inválido ou expirado',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
             },
+          },
+        },
+      },
+    },
+    '/api/v1/auth/resend-code': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Reenviar código de verificação de email',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ResendCodeRequest' } },
+          },
+        },
+        responses: {
+          '200': { description: 'Código reenviado' },
+          '400': {
+            description: 'Email já verificado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '404': {
+            description: 'Usuário não encontrado',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+        },
+      },
+    },
+    '/api/v1/auth/google': {
+      get: {
+        tags: ['Auth'],
+        summary: 'Iniciar fluxo OAuth com Google',
+        description:
+          'Redireciona o browser para a página de consentimento do Google. ' +
+          'Após autenticação bem-sucedida, o Google redireciona para `/google/callback` ' +
+          'que por sua vez redireciona o frontend para `/auth/callback?access=TOKEN&refresh=TOKEN`.',
+        security: [],
+        responses: {
+          '302': { description: 'Redirect para Google OAuth' },
+        },
+      },
+    },
+    '/api/v1/auth/google/callback': {
+      get: {
+        tags: ['Auth'],
+        summary: 'Callback Google OAuth (uso interno — não chamar diretamente)',
+        description:
+          'Endpoint chamado pelo Google após autenticação. Cria ou vincula o usuário e redireciona para o frontend com tokens.',
+        security: [],
+        responses: {
+          '302': {
+            description: 'Redirect para o frontend com access/refresh token nos query params',
           },
         },
       },
@@ -532,9 +648,25 @@ export const openApiSpec = {
             },
           },
           '401': {
-            description: 'Credenciais invalidas',
+            description: 'Credenciais inválidas',
             content: {
               'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+            },
+          },
+          '403': {
+            description: 'Email não verificado — retorna `code: "EMAIL_NOT_VERIFIED"` e `userId`',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    message: { type: 'string', example: 'Email not verified' },
+                    code: { type: 'string', example: 'EMAIL_NOT_VERIFIED' },
+                    userId: { type: 'string', example: '6634a1b2c3d4e5f6a7b8c9d0' },
+                  },
+                },
+              },
             },
           },
         },

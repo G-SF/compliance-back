@@ -35,6 +35,18 @@
       # Custos — cotação USD→BRL (atualize conforme mercado)
       USD_BRL_RATE: ${USD_BRL_RATE:-5.90}
 
+      # Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/v1/auth/google/callback}
+
+      # Email — Resend
+      SMTP_HOST: ${SMTP_HOST:-smtp.resend.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-resend}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Contracta <onboarding@resend.dev>}
+
     depends_on:
       mongo:
         condition: service_healthy

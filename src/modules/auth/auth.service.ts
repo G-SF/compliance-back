@@ -21,6 +21,7 @@ import { redisService } from '../../infra/redis/redis.service';
 import { config } from '../../config';
 import { RegisterDto, LoginDto } from './auth.dto';
 import { PlanModel, PLAN_SLUGS } from '../billing/models/plan.model';
+import { emailService } from './email.service';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -36,13 +37,21 @@ function refreshTokenKey(userId: string, tokenId: string): string {
   return `rt:${userId}:${tokenId}`;
 }
 
+function emailVerifyKey(userId: string): string {
+  return `email_verify:${userId}`;
+}
+
+function generateVerificationCode(): string {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
 }
 
 export class AuthService {
-  async register(dto: RegisterDto): Promise<IUser> {
+  async register(dto: RegisterDto): Promise<{ userId: string; email: string }> {
     const existing = await UserModel.findOne({ email: dto.email });
     if (existing) {
       throw Object.assign(new Error('Email already in use'), { statusCode: 409 });
@@ -59,12 +68,85 @@ export class AuthService {
     const user = await UserModel.create({
       email: dto.email,
       password: hashed,
+      name: dto.name ?? null,
       role,
+      emailVerified: false,
       planId: freePlan?._id ?? null,
       creditsRemaining: freePlan?.creditAmount ?? 2,
     });
 
-    return user;
+    // Send verification code
+    const code = generateVerificationCode();
+    await redisService.set(emailVerifyKey(user._id.toString()), code, 900); // 15 min TTL
+    await emailService.sendVerificationCode(user.email, code, user.name);
+
+    return { userId: user._id.toString(), email: user.email };
+  }
+
+  async sendVerificationCode(userId: string): Promise<void> {
+    const user = await UserModel.findById(userId);
+    if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
+    if (user.emailVerified)
+      throw Object.assign(new Error('Email already verified'), { statusCode: 400 });
+
+    const code = generateVerificationCode();
+    await redisService.set(emailVerifyKey(userId), code, 900);
+    await emailService.sendVerificationCode(user.email, code, user.name);
+  }
+
+  async verifyEmail(userId: string, code: string): Promise<AuthTokens> {
+    const stored = await redisService.get(emailVerifyKey(userId));
+    if (!stored || stored !== code) {
+      throw Object.assign(new Error('Invalid or expired verification code'), { statusCode: 400 });
+    }
+
+    const user = await UserModel.findByIdAndUpdate(userId, { emailVerified: true }, { new: true });
+    if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
+
+    await redisService.del(emailVerifyKey(userId));
+    return this.generateTokens(user._id.toString(), user.role);
+  }
+
+  /**
+   * Find or create a user authenticated via Google OAuth.
+   * Returns JWT tokens ready to be sent to the client.
+   */
+  async googleAuth(profile: {
+    googleId: string;
+    email: string;
+    name: string | null;
+  }): Promise<AuthTokens> {
+    let user = await UserModel.findOne({
+      $or: [{ googleId: profile.googleId }, { email: profile.email }],
+    });
+
+    if (!user) {
+      const count = await UserModel.countDocuments();
+      const role: UserRole = count === 0 ? 'admin' : 'user';
+      const freePlan = await PlanModel.findOne({ slug: PLAN_SLUGS.FREE }).catch(() => null);
+
+      user = await UserModel.create({
+        email: profile.email,
+        password: uuidv4(), // random — never used for login
+        name: profile.name,
+        googleId: profile.googleId,
+        emailVerified: true, // Google already verified the email
+        role,
+        planId: freePlan?._id ?? null,
+        creditsRemaining: freePlan?.creditAmount ?? 2,
+      });
+    } else if (!user.googleId) {
+      // Existing email-based account — link Google ID
+      const updated = await UserModel.findByIdAndUpdate(
+        user._id,
+        { googleId: profile.googleId, emailVerified: true, name: user.name ?? profile.name },
+        { new: true },
+      );
+      if (!updated) throw Object.assign(new Error('User not found'), { statusCode: 404 });
+      user = updated;
+    }
+
+    return this.generateTokens(user._id.toString(), user.role);
   }
 
   async login(dto: LoginDto): Promise<AuthTokens> {
@@ -74,9 +156,25 @@ export class AuthService {
       throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
     }
 
+    if (!user.password) {
+      // Google-only account — no password set
+      throw Object.assign(new Error('This account uses Google login'), { statusCode: 401 });
+    }
+
     const passwordMatch = await bcrypt.compare(dto.password, user.password);
     if (!passwordMatch) {
       throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
+    }
+
+    if (!user.emailVerified) {
+      throw Object.assign(
+        Object.assign(new Error('Email not verified'), {
+          statusCode: 403,
+          code: 'EMAIL_NOT_VERIFIED',
+          userId: user._id.toString(),
+        }),
+        {},
+      );
     }
 
     return this.generateTokens(user._id.toString(), user.role);

@@ -13,6 +13,9 @@ export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing'
 export interface IUser extends Document {
   email: string;
   password: string;
+  name: string | null;
+  googleId: string | null;
+  emailVerified: boolean;
   role: UserRole;
   // ── Billing ────────────────────────────────────────────────────────────────
   /** Reference to the active Plan */
@@ -40,10 +43,13 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: true,
+      required: false,
       // Never return the hashed password in API responses
       select: false,
     },
+    name: { type: String, default: null },
+    googleId: { type: String, default: null, sparse: true },
+    emailVerified: { type: Boolean, default: false },
     role: {
       type: String,
       enum: ['user', 'admin'],

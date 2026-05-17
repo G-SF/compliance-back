@@ -56,4 +56,21 @@ export const config = {
     /** Allow /billing/recharge in all environments */
     frontendUrl: optionalEnv('FRONTEND_URL', 'http://localhost:5173'),
   },
+
+  google: {
+    clientId: optionalEnv('GOOGLE_CLIENT_ID', ''),
+    clientSecret: optionalEnv('GOOGLE_CLIENT_SECRET', ''),
+    callbackUrl: optionalEnv(
+      'GOOGLE_CALLBACK_URL',
+      'http://localhost:3000/api/auth/google/callback',
+    ),
+  },
+
+  email: {
+    host: optionalEnv('SMTP_HOST', 'smtp.gmail.com'),
+    port: parseInt(optionalEnv('SMTP_PORT', '587'), 10),
+    user: optionalEnv('SMTP_USER', ''),
+    pass: optionalEnv('SMTP_PASS', ''),
+    from: optionalEnv('SMTP_FROM', 'Contracta <noreply@contracta.app>'),
+  },
 } as const;

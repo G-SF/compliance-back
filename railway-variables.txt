@@ -46,3 +46,33 @@ REDIS_URL=rediss://default:<SENHA>@<HOST>:6380
 ANTHROPIC_API_KEY=<PREENCHER_SUA_CHAVE_ANTHROPIC>
 CLAUDE_MODEL=claude-haiku-4-5
 CLAUDE_MAX_TOKENS=4096
+
+# ─── Google OAuth ─────────────────────────────────────────────
+# 1. Acesse https://console.cloud.google.com/
+# 2. Crie um projeto → Credentials → Create Credentials → OAuth 2.0 Client ID
+# 3. Tipo: Web application
+# 4. Authorized redirect URIs: https://<SEU_BACKEND>/api/v1/auth/google/callback
+GOOGLE_CLIENT_ID=885
+GOOGLE_CLIENT_SECRET=GOCSPX-CW
+GOOGLE_CALLBACK_URL=https://compliance-back-production.up.railway.app/api/v1/auth/google/callback
+
+# ─── SMTP / Email ─────────────────────────────────────────────
+# Para Gmail: habilite "Senhas de app" em myaccount.google.com/security
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USER=seuemail@gmail.com
+# SMTP_PASS=<SENHA_DE_APP_DO_GMAIL>
+# SMTP_FROM=Contracta <seuemail@gmail.com>
+#
+# Para Resend (recomendado): https://resend.com
+# SMTP_HOST=smtp.resend.com
+# SMTP_PORT=465
+# SMTP_USER=resend
+# SMTP_PASS=<RESEND_API_KEY>
+# SMTP_FROM=Contracta <onboarding@resend.dev>
+# Resend — SMTP relay
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_USER=resend
+SMTP_PASS=re_NxptWsqi_G5u2VGtecPFtqPthbFvjXNw4
+SMTP_FROM=Contracta <onboarding@resend.dev>

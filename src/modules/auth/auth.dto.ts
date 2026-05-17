@@ -8,6 +8,7 @@
 export interface RegisterDto {
   email: string;
   password: string;
+  name?: string;
 }
 
 export interface LoginDto {
@@ -17,6 +18,11 @@ export interface LoginDto {
 
 export interface RefreshTokenDto {
   refreshToken: string;
+}
+
+export interface VerifyEmailDto {
+  userId: string;
+  code: string;
 }
 
 // ── Validation helpers ──────────────────────────────────────────────────────
@@ -33,7 +39,11 @@ export function validateRegisterDto(body: unknown): RegisterDto {
     throw Object.assign(new Error('Password must be at least 8 characters'), { statusCode: 400 });
   }
 
-  return { email: dto.email.toLowerCase().trim(), password: dto.password };
+  return {
+    email: dto.email.toLowerCase().trim(),
+    password: dto.password,
+    name: typeof dto.name === 'string' ? dto.name.trim() : undefined,
+  };
 }
 
 export function validateLoginDto(body: unknown): LoginDto {
@@ -57,4 +67,17 @@ export function validateRefreshTokenDto(body: unknown): RefreshTokenDto {
   }
 
   return { refreshToken: dto.refreshToken };
+}
+
+export function validateVerifyEmailDto(body: unknown): VerifyEmailDto {
+  const dto = body as Record<string, unknown>;
+
+  if (!dto.userId || typeof dto.userId !== 'string') {
+    throw Object.assign(new Error('userId is required'), { statusCode: 400 });
+  }
+  if (!dto.code || typeof dto.code !== 'string' || !/^\d{6}$/.test(dto.code)) {
+    throw Object.assign(new Error('code must be a 6-digit number'), { statusCode: 400 });
+  }
+
+  return { userId: dto.userId, code: dto.code };
 }

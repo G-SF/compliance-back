@@ -1,11 +1,9 @@
 /**
  * Auth Routes
- *
- * Public endpoints: POST /register, POST /login, POST /refresh, POST /logout
- * Protected endpoint: GET /me  (requires valid JWT via authMiddleware)
  */
 
 import { Router } from 'express';
+import passport from 'passport';
 import { authController } from './auth.controller';
 import { authMiddleware } from '../../shared/middleware/auth.middleware';
 import { requireRole } from '../../shared/middleware/role.middleware';
@@ -17,6 +15,21 @@ authRouter.post('/register', authController.register);
 authRouter.post('/login', authController.login);
 authRouter.post('/refresh', authController.refresh);
 authRouter.post('/logout', authController.logout);
+
+// Email verification
+authRouter.post('/verify-email', authController.verifyEmail);
+authRouter.post('/resend-code', authController.resendCode);
+
+// Google OAuth
+authRouter.get(
+  '/google',
+  passport.authenticate('google', { scope: ['profile', 'email'], session: false }),
+);
+authRouter.get(
+  '/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: '/login?error=oauth_failed' }),
+  authController.googleCallback,
+);
 
 // Protected
 authRouter.get('/me', authMiddleware, authController.me);
