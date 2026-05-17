@@ -40,12 +40,9 @@
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/v1/auth/google/callback}
 
-      # Email — Resend
-      SMTP_HOST: ${SMTP_HOST:-smtp.resend.com}
-      SMTP_PORT: ${SMTP_PORT:-465}
-      SMTP_USER: ${SMTP_USER:-resend}
-      SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-Contracta <onboarding@resend.dev>}
+      # Email — Resend HTTP API
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Contracta <onboarding@resend.dev>}
 
     depends_on:
       mongo:

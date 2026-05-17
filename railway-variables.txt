@@ -52,27 +52,13 @@ CLAUDE_MAX_TOKENS=4096
 # 2. Crie um projeto → Credentials → Create Credentials → OAuth 2.0 Client ID
 # 3. Tipo: Web application
 # 4. Authorized redirect URIs: https://<SEU_BACKEND>/api/v1/auth/google/callback
-GOOGLE_CLIENT_ID=885
-GOOGLE_CLIENT_SECRET=GOCSPX-CW
-GOOGLE_CALLBACK_URL=https://compliance-back-production.up.railway.app/api/v1/auth/google/callback
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK_URL=
 
-# ─── SMTP / Email ─────────────────────────────────────────────
-# Para Gmail: habilite "Senhas de app" em myaccount.google.com/security
-# SMTP_HOST=smtp.gmail.com
-# SMTP_PORT=587
-# SMTP_USER=seuemail@gmail.com
-# SMTP_PASS=<SENHA_DE_APP_DO_GMAIL>
-# SMTP_FROM=Contracta <seuemail@gmail.com>
-#
-# Para Resend (recomendado): https://resend.com
-# SMTP_HOST=smtp.resend.com
-# SMTP_PORT=465
-# SMTP_USER=resend
-# SMTP_PASS=<RESEND_API_KEY>
-# SMTP_FROM=Contracta <onboarding@resend.dev>
-# Resend — SMTP relay
-SMTP_HOST=smtp.resend.com
-SMTP_PORT=465
-SMTP_USER=resend
-SMTP_PASS=re_NxptWsqi_G5u2VGtecPFtqPthbFvjXNw4
-SMTP_FROM=Contracta <onboarding@resend.dev>
+# ─── Email — Resend HTTP API ─────────────────────────────────
+# Gere sua API Key em https://resend.com/api-keys
+# Use EMAIL_FROM com um domínio verificado no Resend, ou
+# mantenha onboarding@resend.dev para envio de teste (só para o email do owner).
+RESEND_API_KEY=re_NxptWsqi_G5u2VGtecPFtqPthbFvjXNw4
+EMAIL_FROM=Contracta <onboarding@resend.dev>

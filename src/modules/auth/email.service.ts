@@ -1,28 +1,18 @@
 /**
  * Email Service
  *
- * Sends transactional emails (verification codes, etc.) via SMTP / nodemailer.
- * If SMTP credentials are not configured the email is logged to stdout — useful
- * for local development without an external mail server.
+ * Sends transactional emails (verification codes, etc.) via the Resend HTTP API.
+ * Using the HTTP API avoids SMTP connectivity issues on PaaS environments (Railway).
+ * If RESEND_API_KEY is not set, the code is printed to stdout for local development.
  */
 
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { config } from '../../config';
 
-function buildTransporter() {
-  const { host, port, user, pass } = config.email;
-
-  if (!user || !pass) {
-    // Ethereal-style no-op transport for dev/test
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
+function buildResendClient(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  return new Resend(apiKey);
 }
 
 function verificationEmailHtml(code: string, name: string | null): string {
@@ -100,22 +90,26 @@ function verificationEmailHtml(code: string, name: string | null): string {
 
 export const emailService = {
   async sendVerificationCode(to: string, code: string, name: string | null): Promise<void> {
-    const transporter = buildTransporter();
+    const resend = buildResendClient();
 
-    if (!transporter) {
+    if (!resend) {
       // Dev fallback — print to console so the developer can copy the code
       console.log(
-        `\n[EmailService] ⚠️  SMTP not configured. Verification code for ${to}: ${code}\n`,
+        `\n[EmailService] ⚠️  RESEND_API_KEY not set. Verification code for ${to}: ${code}\n`,
       );
       return;
     }
 
-    await transporter.sendMail({
+    const { error } = await resend.emails.send({
       from: config.email.from,
       to,
       subject: `${code} – Confirme seu e-mail na Contracta`,
       html: verificationEmailHtml(code, name),
       text: `Seu código de verificação é: ${code}\nEle expira em 15 minutos.`,
     });
+
+    if (error) {
+      throw new Error(`[EmailService] Resend API error: ${error.message}`);
+    }
   },
 };

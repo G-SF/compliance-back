@@ -67,10 +67,7 @@ export const config = {
   },
 
   email: {
-    host: optionalEnv('SMTP_HOST', 'smtp.gmail.com'),
-    port: parseInt(optionalEnv('SMTP_PORT', '587'), 10),
-    user: optionalEnv('SMTP_USER', ''),
-    pass: optionalEnv('SMTP_PASS', ''),
-    from: optionalEnv('SMTP_FROM', 'Contracta <noreply@contracta.app>'),
+    from: optionalEnv('EMAIL_FROM', 'Contracta <onboarding@resend.dev>'),
+    // Legacy SMTP fields kept for reference; no longer used (switched to Resend HTTP API)
   },
 } as const;

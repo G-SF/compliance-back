@@ -75,10 +75,17 @@ export class AuthService {
       creditsRemaining: freePlan?.creditAmount ?? 2,
     });
 
-    // Send verification code
+    // Persist the code first (must be awaited — Redis is fast and local)
     const code = generateVerificationCode();
     await redisService.set(emailVerifyKey(user._id.toString()), code, 900); // 15 min TTL
-    await emailService.sendVerificationCode(user.email, code, user.name);
+
+    // Fire-and-forget: email delivery must never block the HTTP response.
+    // Errors are logged but do not propagate to the caller.
+    emailService
+      .sendVerificationCode(user.email, code, user.name)
+      .catch((err: unknown) =>
+        console.error('[AuthService] Failed to send verification email:', (err as Error).message),
+      );
 
     return { userId: user._id.toString(), email: user.email };
   }
@@ -91,7 +98,13 @@ export class AuthService {
 
     const code = generateVerificationCode();
     await redisService.set(emailVerifyKey(userId), code, 900);
-    await emailService.sendVerificationCode(user.email, code, user.name);
+
+    // Fire-and-forget — same rationale as register()
+    emailService
+      .sendVerificationCode(user.email, code, user.name)
+      .catch((err: unknown) =>
+        console.error('[AuthService] Failed to resend verification email:', (err as Error).message),
+      );
   }
 
   async verifyEmail(userId: string, code: string): Promise<AuthTokens> {
