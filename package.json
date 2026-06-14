@@ -5,6 +5,10 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "dev:stripe": "concurrently --names \"API,STRIPE\" --prefix-colors \"cyan,yellow\" \"npm run dev\" \"npm run stripe:listen\"",
+    "stripe:listen": "C:\\Users\\gabri\\.stripe\\stripe.exe listen --forward-to http://localhost:3000/webhooks/stripe",
+    "stripe:login": "C:\\Users\\gabri\\.stripe\\stripe.exe login",
+    "stripe:trigger": "C:\\Users\\gabri\\.stripe\\stripe.exe trigger checkout.session.completed",
     "build": "tsc",
     "start": "node dist/main.js",
     "lint": "eslint src --ext .ts",
@@ -35,6 +39,7 @@
     "pdfjs-dist": "^3.11.174",
     "pizzip": "^3.2.0",
     "resend": "^6.12.3",
+    "stripe": "^22.2.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
@@ -54,6 +59,7 @@
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "@typescript-eslint/parser": "^6.13.2",
+    "concurrently": "^10.0.3",
     "eslint": "^8.55.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.0.1",

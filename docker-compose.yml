@@ -44,6 +44,13 @@
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-Contracta <onboarding@resend.dev>}
 
+      # Stripe
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_BASIC: ${STRIPE_PRICE_BASIC:-}
+      STRIPE_PRICE_ESSENTIAL: ${STRIPE_PRICE_ESSENTIAL:-}
+      STRIPE_PRICE_MONTHLY: ${STRIPE_PRICE_MONTHLY:-}
+
     depends_on:
       mongo:
         condition: service_healthy

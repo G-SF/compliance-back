@@ -3,9 +3,11 @@
  *
  * GET    /api/v1/billing/status               — user plan + credits (auth required)
  * GET    /api/v1/billing/plans                — all active plans (public)
- * POST   /api/v1/billing/recharge             — apply a plan immediately (auth)
+ * POST   /api/v1/billing/recharge             — apply a plan immediately (admin only)
  * GET    /api/v1/billing/history              — credit history (auth)
  * GET    /api/v1/billing/contract-usage/:id   — per-contract limits (auth)
+ * POST   /api/v1/billing/checkout             — create Stripe Checkout session (auth)
+ * POST   /api/v1/billing/portal               — create Stripe Customer Portal session (auth)
  */
 
 import { Router } from 'express';
@@ -24,6 +26,10 @@ billingRouter.use(authMiddleware);
 billingRouter.get('/status', billingController.getStatus);
 billingRouter.get('/history', billingController.getCreditHistory);
 billingRouter.get('/contract-usage/:documentId', billingController.getContractUsage);
+
+// Stripe checkout & portal
+billingRouter.post('/checkout', billingController.createCheckoutSession);
+billingRouter.post('/portal', billingController.createPortalSession);
 
 // Admin only — direct plan assignment bypasses payment; must never be user-accessible in prod
 billingRouter.post('/recharge', requireRole('admin'), billingController.recharge);

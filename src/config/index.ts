@@ -53,8 +53,16 @@ export const config = {
   },
 
   billing: {
-    /** Allow /billing/recharge in all environments */
     frontendUrl: optionalEnv('FRONTEND_URL', 'http://localhost:5173'),
+  },
+
+  stripe: {
+    secretKey: optionalEnv('STRIPE_SECRET_KEY', ''),
+    webhookSecret: optionalEnv('STRIPE_WEBHOOK_SECRET', ''),
+    /** Stripe Price IDs — create these in the Stripe Dashboard */
+    priceBasic: optionalEnv('STRIPE_PRICE_BASIC', ''),
+    priceEssential: optionalEnv('STRIPE_PRICE_ESSENTIAL', ''),
+    priceMonthly: optionalEnv('STRIPE_PRICE_MONTHLY', ''),
   },
 
   google: {

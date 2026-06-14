@@ -15,6 +15,7 @@ import { Request, Response, NextFunction } from 'express';
 import { MongoServerError } from 'mongodb';
 import mongoose from 'mongoose';
 import { JsonWebTokenError } from 'jsonwebtoken';
+import StripeLib = require('stripe');
 import { ApiResponse } from '../utils/response.util';
 import { logger } from '../utils/logger';
 
@@ -48,6 +49,16 @@ export function errorMiddleware(
   // JWT errors surfaced outside authMiddleware
   if (err instanceof JsonWebTokenError) {
     res.status(401).json(ApiResponse.error('Invalid token', 401));
+    return;
+  }
+
+  // Stripe SDK errors — never expose Stripe's internal status codes (e.g. 404
+  // "No such price") as HTTP status codes, since they look like missing routes.
+  if (err instanceof StripeLib.errors.StripeError) {
+    const status = err.statusCode && err.statusCode >= 400 && err.statusCode < 500 ? 400 : 503;
+    res
+      .status(status)
+      .json(ApiResponse.error(`Erro no serviço de pagamento: ${err.message}`, status));
     return;
   }
 

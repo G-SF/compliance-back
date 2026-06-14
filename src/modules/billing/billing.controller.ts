@@ -11,6 +11,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { billingService } from './billing.service';
+import { stripeService } from './stripe.service';
 import { ApiResponse } from '../../shared/utils/response.util';
 import { AuthenticatedRequest } from '../../shared/middleware/auth.middleware';
 import { PLAN_SLUGS, PlanSlug } from './models/plan.model';
@@ -97,6 +98,56 @@ export const billingController = {
 
       const usage = await billingService.getContractUsage(userId, documentId);
       res.json(ApiResponse.success(usage));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // ── Stripe ────────────────────────────────────────────────────────────────
+
+  /** POST /billing/checkout — creates a Stripe Checkout session */
+  async createCheckoutSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const { planSlug } = req.body as { planSlug?: string };
+
+      if (!planSlug) {
+        throw Object.assign(new Error('planSlug is required'), { statusCode: 400 });
+      }
+
+      const session = await stripeService.createCheckoutSession(userId, planSlug as PlanSlug);
+      res.json(ApiResponse.success(session));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /** POST /billing/portal — creates a Stripe Customer Portal session */
+  async createPortalSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const url = await stripeService.createPortalSession(userId);
+      res.json(ApiResponse.success({ url }));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * POST /webhooks/stripe
+   * Stripe sends raw body — must NOT go through express.json().
+   * Mounted at app level, before the JSON middleware.
+   */
+  async stripeWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const sig = req.headers['stripe-signature'];
+      if (!sig || typeof sig !== 'string') {
+        res.status(400).json(ApiResponse.error('Missing stripe-signature header', 400));
+        return;
+      }
+
+      await stripeService.handleWebhook(req.body as Buffer, sig);
+      res.json({ received: true });
     } catch (err) {
       next(err);
     }

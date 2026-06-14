@@ -22,6 +22,7 @@ import { historyRouter } from './modules/history/history.routes';
 import { documentAnalysisRouter } from './modules/document-analysis/document-analysis.routes';
 import { aiCostsRouter } from './modules/ai-costs/ai-costs.routes';
 import { billingRouter } from './modules/billing/billing.routes';
+import { billingController } from './modules/billing/billing.controller';
 import { errorMiddleware } from './shared/middleware/error.middleware';
 import { ApiResponse } from './shared/utils/response.util';
 import { openApiSpec } from './config/openapi';
@@ -63,6 +64,14 @@ export function createApp(): Application {
       credentials: true,
       exposedHeaders: ['Content-Disposition'],
     }),
+  );
+
+  // ── Stripe webhook — MUST come before express.json() ───────────────────────
+  // Stripe requires the raw body buffer to verify the signature.
+  app.post(
+    '/webhooks/stripe',
+    express.raw({ type: 'application/json' }),
+    billingController.stripeWebhook,
   );
 
   // ── Built-in middleware ─────────────────────────────────────────────────────
