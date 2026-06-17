@@ -235,7 +235,7 @@ export const billingService = {
       userId,
       planId: plan._id.toString(),
       creditAmount: plan.creditAmount,
-      reason: `Plan purchase: ${plan.name}`,
+      reason: `Compra de plano: ${plan.name}`,
       replace: true, // balance is already set above; log as grant
     }).catch(() => undefined); // ignore double-log
 

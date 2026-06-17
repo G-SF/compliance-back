@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Stripe Service
  *
  * Handles:
@@ -15,18 +15,18 @@ import { SubscriptionModel } from './models/subscription.model';
 import { PlanModel, PLAN_SLUGS, PlanSlug } from './models/plan.model';
 import { logger } from '../../shared/utils/logger';
 
-// â”€â”€ Stripe instance type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Stripe instance type ─────────────────────────────────────────────────────
 
 type StripeClient = StripeLib.Stripe;
 
-// â”€â”€ Lazy-init Stripe client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Lazy-init Stripe client ──────────────────────────────────────────────────
 
 let _stripe: StripeClient | null = null;
 
 function getStripe(): StripeClient {
   if (!_stripe) {
     if (!config.stripe.secretKey) {
-      throw Object.assign(new Error('Stripe nÃ£o estÃ¡ configurado'), { statusCode: 503 });
+      throw Object.assign(new Error('Stripe não está configurado'), { statusCode: 503 });
     }
     _stripe = new StripeLib(config.stripe.secretKey);
   }
@@ -41,14 +41,57 @@ function getPriceId(planSlug: PlanSlug): string {
   };
   const priceId = map[planSlug];
   if (!priceId) {
-    throw Object.assign(new Error(`Nenhum preÃ§o Stripe configurado para o plano: ${planSlug}`), {
+    throw Object.assign(new Error(`Nenhum preço Stripe configurado para o plano: ${planSlug}`), {
       statusCode: 400,
     });
   }
   return priceId;
 }
 
-// â”€â”€ Public service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Stripe API field helpers ─────────────────────────────────────────────────
+// The Stripe SDK v22 pins API version 2026-05-27.dahlia, which moved two fields:
+//  - `current_period_end` left the Subscription object and now lives on each
+//    subscription item (`subscription.items.data[].current_period_end`).
+//  - `Invoice.subscription` was removed; the subscription reference is now under
+//    `invoice.parent.subscription_details.subscription`.
+// These helpers read the new location and fall back to the legacy shape so the
+// code keeps working across API versions.
+
+/** Extracts the current period end (epoch seconds) from a subscription object. */
+function extractSubscriptionPeriodEnd(subscription: Record<string, unknown>): Date | null {
+  const items = subscription['items'] as { data?: Array<Record<string, unknown>> } | undefined;
+  const itemPeriodEnd = items?.data?.[0]?.['current_period_end'];
+  if (typeof itemPeriodEnd === 'number') return new Date(itemPeriodEnd * 1000);
+
+  // Legacy (pre-2025) top-level field
+  const legacy = subscription['current_period_end'];
+  if (typeof legacy === 'number') return new Date(legacy * 1000);
+
+  return null;
+}
+
+/** Extracts the Stripe subscription id referenced by an invoice. */
+function extractInvoiceSubscriptionId(invoice: Record<string, unknown>): string | null {
+  const fromRef = (ref: unknown): string | null => {
+    if (typeof ref === 'string') return ref;
+    if (ref && typeof ref === 'object') {
+      const id = (ref as Record<string, unknown>)['id'];
+      if (typeof id === 'string') return id;
+    }
+    return null;
+  };
+
+  // Legacy (pre-2025) top-level field
+  const legacy = fromRef(invoice['subscription']);
+  if (legacy) return legacy;
+
+  // API 2025+: invoice.parent.subscription_details.subscription
+  const parent = invoice['parent'] as Record<string, unknown> | undefined;
+  const subDetails = parent?.['subscription_details'] as Record<string, unknown> | undefined;
+  return fromRef(subDetails?.['subscription']);
+}
+
+// ── Public service ───────────────────────────────────────────────────────────
 
 export const stripeService = {
   /**
@@ -63,7 +106,7 @@ export const stripeService = {
     const stripe = getStripe();
 
     if (planSlug === PLAN_SLUGS.FREE) {
-      throw Object.assign(new Error('O plano gratuito nÃ£o requer pagamento'), {
+      throw Object.assign(new Error('O plano gratuito não requer pagamento'), {
         statusCode: 400,
       });
     }
@@ -92,7 +135,7 @@ export const stripeService = {
       customer: customerId,
       mode: (plan.isMonthly ? 'subscription' : 'payment') as 'subscription' | 'payment',
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${config.billing.frontendUrl}/billing?success=true&plan=${planSlug}`,
+      success_url: `${config.billing.frontendUrl}/billing?success=true&plan=${planSlug}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${config.billing.frontendUrl}/plans`,
       metadata: { userId, planSlug },
       ...(plan.isMonthly && {
@@ -110,7 +153,7 @@ export const stripeService = {
       });
     }
     if (!session.url) {
-      throw Object.assign(new Error('Falha ao criar sessÃ£o de checkout'), {
+      throw Object.assign(new Error('Falha ao criar sessão de checkout'), {
         statusCode: 500,
       });
     }
@@ -126,7 +169,7 @@ export const stripeService = {
 
     const user = await UserModel.findById(userId).select('stripeCustomerId');
     if (!user?.stripeCustomerId) {
-      throw Object.assign(new Error('Nenhum cliente Stripe encontrado para este usuÃ¡rio'), {
+      throw Object.assign(new Error('Nenhum cliente Stripe encontrado para este usuário'), {
         statusCode: 404,
       });
     }
@@ -139,6 +182,35 @@ export const stripeService = {
   },
 
   /**
+   * Verifies a Checkout session with Stripe and applies the plan if the webhook
+   * hasn't processed yet. Used as a fallback when webhook delivery is delayed.
+   */
+  async verifyAndApplyCheckoutSession(
+    sessionId: string,
+    userId: string,
+  ): Promise<import('./billing.service').UserBillingStatus> {
+    const stripe = getStripe();
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.metadata?.['userId'] !== userId) {
+      throw Object.assign(new Error('Session não autorizada'), { statusCode: 403 });
+    }
+
+    const planSlug = session.metadata?.['planSlug'] as PlanSlug | undefined;
+
+    if (planSlug && session.payment_status === 'paid') {
+      const currentStatus = await billingService.getUserBillingStatus(userId);
+      if (currentStatus.planSlug !== planSlug) {
+        await billingService.applyPlanPurchase(userId, planSlug);
+        logger.info(`[Stripe] Plano aplicado via verify-session: user=${userId} plan=${planSlug}`);
+      }
+    }
+
+    return billingService.getUserBillingStatus(userId);
+  },
+
+  /**
    * Verifies the Stripe webhook signature and dispatches to handlers.
    * Expects the raw request body (Buffer).
    */
@@ -147,7 +219,7 @@ export const stripeService = {
     const secret = config.stripe.webhookSecret;
 
     if (!secret) {
-      throw Object.assign(new Error('Webhook secret nÃ£o configurado'), {
+      throw Object.assign(new Error('Webhook secret não configurado'), {
         statusCode: 500,
       });
     }
@@ -179,12 +251,12 @@ export const stripeService = {
         await handleInvoicePaymentSucceeded(stripe, data);
         break;
       default:
-        logger.info(`[Stripe] Evento nÃ£o tratado: ${event.type}`);
+        logger.info(`[Stripe] Evento não tratado: ${event.type}`);
     }
   },
 };
 
-// â”€â”€ Webhook handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Webhook handlers ─────────────────────────────────────────────────────────
 
 async function handleCheckoutCompleted(session: Record<string, unknown>): Promise<void> {
   const metadata = session['metadata'] as Record<string, string> | null;
@@ -196,18 +268,29 @@ async function handleCheckoutCompleted(session: Record<string, unknown>): Promis
     return;
   }
 
+  // Skip if verify-payment endpoint already applied the plan (prevents duplicate transactions)
+  const currentStatus = await billingService.getUserBillingStatus(userId);
+  const alreadyApplied = currentStatus.planSlug === planSlug;
+
   if (session['mode'] === 'payment') {
-    await billingService.applyPlanPurchase(userId, planSlug as PlanSlug);
-    logger.info(`[Stripe] Plano aplicado (one-time): user=${userId} plan=${planSlug}`);
+    if (!alreadyApplied) {
+      await billingService.applyPlanPurchase(userId, planSlug as PlanSlug);
+    }
+    logger.info(
+      `[Stripe] Plano aplicado (one-time): user=${userId} plan=${planSlug} skip=${alreadyApplied}`,
+    );
   } else if (session['mode'] === 'subscription') {
     const customer = session['customer'];
     const customerId = typeof customer === 'string' ? customer : null;
     if (customerId) {
       await UserModel.findByIdAndUpdate(userId, { stripeCustomerId: customerId });
     }
-    // Apply plan immediately so status is updated before invoice.payment_succeeded fires
-    await billingService.applyPlanPurchase(userId, planSlug as PlanSlug);
-    logger.info(`[Stripe] Checkout de assinatura concluído: user=${userId} plan=${planSlug}`);
+    if (!alreadyApplied) {
+      await billingService.applyPlanPurchase(userId, planSlug as PlanSlug);
+    }
+    logger.info(
+      `[Stripe] Checkout de assinatura concluído: user=${userId} plan=${planSlug} skip=${alreadyApplied}`,
+    );
   }
 }
 
@@ -217,17 +300,17 @@ async function handleSubscriptionUpdated(subscription: Record<string, unknown>):
   if (!userId) return;
 
   const status = subscription['status'] as string;
-  const periodEnd = new Date((subscription['current_period_end'] as number) * 1000);
+  const periodEnd = extractSubscriptionPeriodEnd(subscription);
   const subscriptionId = subscription['id'] as string;
 
   await UserModel.findByIdAndUpdate(userId, {
     subscriptionStatus: status,
-    currentPeriodEnd: periodEnd,
+    ...(periodEnd ? { currentPeriodEnd: periodEnd } : {}),
   });
 
   await SubscriptionModel.findOneAndUpdate(
     { stripeSubscriptionId: subscriptionId },
-    { status, currentPeriodEnd: periodEnd },
+    { status, ...(periodEnd ? { currentPeriodEnd: periodEnd } : {}) },
     { new: true },
   );
 
@@ -259,8 +342,7 @@ async function handleInvoicePaymentSucceeded(
   stripe: StripeClient,
   invoice: Record<string, unknown>,
 ): Promise<void> {
-  const subscriptionId =
-    typeof invoice['subscription'] === 'string' ? invoice['subscription'] : null;
+  const subscriptionId = extractInvoiceSubscriptionId(invoice);
 
   if (!subscriptionId) return;
 
@@ -273,8 +355,8 @@ async function handleInvoicePaymentSucceeded(
   const plan = await PlanModel.findOne({ slug: planSlug });
   if (!plan) return;
 
-  const periodEnd = new Date(
-    (subscription as unknown as Record<string, number>)['current_period_end'] * 1000,
+  const periodEnd = extractSubscriptionPeriodEnd(
+    subscription as unknown as Record<string, unknown>,
   );
   const customer = subscription.customer;
   const customerId = typeof customer === 'string' ? customer : customer.id;
@@ -283,7 +365,7 @@ async function handleInvoicePaymentSucceeded(
     planId: plan._id,
     creditsRemaining: plan.creditAmount,
     subscriptionStatus: 'active',
-    currentPeriodEnd: periodEnd,
+    ...(periodEnd ? { currentPeriodEnd: periodEnd } : {}),
     stripeCustomerId: customerId,
   });
 
@@ -295,7 +377,7 @@ async function handleInvoicePaymentSucceeded(
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscriptionId,
       status: 'active',
-      currentPeriodEnd: periodEnd,
+      ...(periodEnd ? { currentPeriodEnd: periodEnd } : {}),
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );

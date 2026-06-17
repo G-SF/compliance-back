@@ -30,6 +30,7 @@ billingRouter.get('/contract-usage/:documentId', billingController.getContractUs
 // Stripe checkout & portal
 billingRouter.post('/checkout', billingController.createCheckoutSession);
 billingRouter.post('/portal', billingController.createPortalSession);
+billingRouter.get('/verify-payment', billingController.verifyPayment);
 
 // Admin only — direct plan assignment bypasses payment; must never be user-accessible in prod
 billingRouter.post('/recharge', requireRole('admin'), billingController.recharge);

@@ -122,6 +122,27 @@ export const billingController = {
     }
   },
 
+  /**
+   * GET /billing/verify-payment?session_id=xxx
+   * Verifies a Stripe Checkout session and applies the plan if the webhook
+   * hasn't processed yet. Frontend calls this on return from Stripe.
+   */
+  async verifyPayment(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { userId } = req as AuthenticatedRequest;
+      const sessionId = req.query['session_id'] as string | undefined;
+
+      if (!sessionId) {
+        throw Object.assign(new Error('session_id é obrigatório'), { statusCode: 400 });
+      }
+
+      const status = await stripeService.verifyAndApplyCheckoutSession(sessionId, userId);
+      res.json(ApiResponse.success(status));
+    } catch (err) {
+      next(err);
+    }
+  },
+
   /** POST /billing/portal — creates a Stripe Customer Portal session */
   async createPortalSession(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
