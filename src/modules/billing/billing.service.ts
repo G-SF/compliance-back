@@ -26,6 +26,12 @@ export interface UserBillingStatus {
   analysisLimit: number;
   questionLimitPerContract: number;
   autoFixLimitPerContract: number;
+  /** Max electronic signatures. -1 = unlimited, 0 = blocked */
+  signatureLimit: number;
+  /** Signatures already consumed (lifetime) */
+  signaturesUsed: number;
+  /** Remaining signatures. -1 = unlimited */
+  signaturesRemaining: number;
   isMonthly: boolean;
   subscriptionStatus: string | null;
   currentPeriodEnd: Date | null;
@@ -80,7 +86,7 @@ export const billingService = {
 
   async getUserBillingStatus(userId: string): Promise<UserBillingStatus> {
     const user = await UserModel.findById(userId).select(
-      'planId creditsRemaining subscriptionStatus currentPeriodEnd',
+      'planId creditsRemaining signaturesUsed subscriptionStatus currentPeriodEnd',
     );
     if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
 
@@ -91,6 +97,9 @@ export const billingService = {
 
     if (!plan) throw Object.assign(new Error('Plan not found'), { statusCode: 500 });
 
+    const signaturesUsed = user.signaturesUsed ?? 0;
+    const signatureLimit = plan.signatureLimit;
+
     return {
       planSlug: plan.slug as PlanSlug,
       planName: plan.name,
@@ -98,10 +107,60 @@ export const billingService = {
       analysisLimit: plan.analysisLimit,
       questionLimitPerContract: plan.questionLimitPerContract,
       autoFixLimitPerContract: plan.autoFixLimitPerContract,
+      signatureLimit,
+      signaturesUsed,
+      signaturesRemaining:
+        signatureLimit === -1 ? -1 : Math.max(0, signatureLimit - signaturesUsed),
       isMonthly: plan.isMonthly,
       subscriptionStatus: user.subscriptionStatus ?? null,
       currentPeriodEnd: user.currentPeriodEnd ?? null,
     };
+  },
+
+  // ── Signature operations ──────────────────────────────────────────────────
+
+  /**
+   * Atomically consumes 1 signature from the user's plan allowance.
+   * - signatureLimit === -1 → unlimited (always allowed, still counts usage)
+   * - signatureLimit === 0  → blocked
+   * - otherwise             → allowed while signaturesUsed < limit
+   */
+  async consumeSignature(
+    userId: string,
+  ): Promise<{ allowed: boolean; signaturesUsed: number; signaturesRemaining: number }> {
+    const status = await this.getUserBillingStatus(userId);
+    const limit = status.signatureLimit;
+
+    if (limit === 0) {
+      return { allowed: false, signaturesUsed: status.signaturesUsed, signaturesRemaining: 0 };
+    }
+
+    // Atomic guard: for limited plans, only increment while under the limit.
+    const filter = limit === -1 ? { _id: userId } : { _id: userId, signaturesUsed: { $lt: limit } };
+
+    const updated = await UserModel.findOneAndUpdate(
+      filter,
+      { $inc: { signaturesUsed: 1 } },
+      { new: true },
+    ).select('signaturesUsed');
+
+    if (!updated) {
+      return { allowed: false, signaturesUsed: status.signaturesUsed, signaturesRemaining: 0 };
+    }
+
+    return {
+      allowed: true,
+      signaturesUsed: updated.signaturesUsed,
+      signaturesRemaining: limit === -1 ? -1 : Math.max(0, limit - updated.signaturesUsed),
+    };
+  },
+
+  /** Restores 1 signature (e.g. when signing fails after the allowance was consumed). */
+  async restoreSignature(userId: string, _reason: string): Promise<void> {
+    await UserModel.findOneAndUpdate(
+      { _id: userId, signaturesUsed: { $gte: 1 } },
+      { $inc: { signaturesUsed: -1 } },
+    );
   },
 
   // ── Credit operations ─────────────────────────────────────────────────────

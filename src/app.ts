@@ -23,6 +23,7 @@ import { documentAnalysisRouter } from './modules/document-analysis/document-ana
 import { aiCostsRouter } from './modules/ai-costs/ai-costs.routes';
 import { billingRouter } from './modules/billing/billing.routes';
 import { billingController } from './modules/billing/billing.controller';
+import { signaturesRouter } from './modules/signatures/signatures.routes';
 import { errorMiddleware } from './shared/middleware/error.middleware';
 import { ApiResponse } from './shared/utils/response.util';
 import { openApiSpec } from './config/openapi';
@@ -101,6 +102,7 @@ export function createApp(): Application {
   app.use('/api/v1/document-analysis', documentAnalysisRouter);
   app.use('/api/v1/ai-costs', aiCostsRouter);
   app.use('/api/v1/billing', billingRouter);
+  app.use('/api/v1/signatures', signaturesRouter);
 
   // ── Catch-all 404 ───────────────────────────────────────────────────────────
   app.use((_req: Request, res: Response) => {

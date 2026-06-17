@@ -31,6 +31,8 @@ export interface IPlan extends Document {
   questionLimitPerContract: number;
   /** Max auto-fix calls per contract. -1 = unlimited, 0 = blocked */
   autoFixLimitPerContract: number;
+  /** Max electronic signatures allowed. -1 = unlimited, 0 = blocked */
+  signatureLimit: number;
   /** Whether this is a recurring subscription plan */
   isMonthly: boolean;
   /** Stripe Price ID (null until Stripe is configured) */
@@ -48,6 +50,7 @@ const planSchema = new Schema<IPlan>(
     analysisLimit: { type: Number, required: true, min: 0 },
     questionLimitPerContract: { type: Number, required: true, min: 0 },
     autoFixLimitPerContract: { type: Number, required: true, min: -1 },
+    signatureLimit: { type: Number, required: true, default: 0, min: -1 },
     isMonthly: { type: Boolean, required: true, default: false },
     stripePriceId: { type: String, default: null },
     active: { type: Boolean, default: true, index: true },
@@ -68,6 +71,7 @@ export const PLAN_DEFINITIONS: Omit<IPlan, keyof Document | 'createdAt' | 'updat
     analysisLimit: 2,
     questionLimitPerContract: 1,
     autoFixLimitPerContract: 0,
+    signatureLimit: 0, // sem assinatura
     isMonthly: false,
     stripePriceId: null,
     active: true,
@@ -81,6 +85,7 @@ export const PLAN_DEFINITIONS: Omit<IPlan, keyof Document | 'createdAt' | 'updat
     analysisLimit: 5,
     questionLimitPerContract: 2,
     autoFixLimitPerContract: 0,
+    signatureLimit: 5, // até 5 assinaturas
     isMonthly: false,
     stripePriceId: null,
     active: true,
@@ -94,6 +99,7 @@ export const PLAN_DEFINITIONS: Omit<IPlan, keyof Document | 'createdAt' | 'updat
     analysisLimit: 10,
     questionLimitPerContract: 5,
     autoFixLimitPerContract: 1,
+    signatureLimit: -1, // assinaturas ilimitadas
     isMonthly: false,
     stripePriceId: null,
     active: true,
@@ -107,6 +113,7 @@ export const PLAN_DEFINITIONS: Omit<IPlan, keyof Document | 'createdAt' | 'updat
     analysisLimit: 40,
     questionLimitPerContract: 10,
     autoFixLimitPerContract: -1, // unlimited
+    signatureLimit: -1, // assinaturas ilimitadas
     isMonthly: true,
     stripePriceId: null,
     active: true,

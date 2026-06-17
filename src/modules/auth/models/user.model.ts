@@ -22,6 +22,8 @@ export interface IUser extends Document {
   planId: Types.ObjectId | null;
   /** Available credits (1 credit = 1 analysis). Atomically decremented. */
   creditsRemaining: number;
+  /** Electronic signatures consumed (lifetime). Atomically incremented. */
+  signaturesUsed: number;
   /** Stripe customer ID — set on first checkout */
   stripeCustomerId: string | null;
   /** Subscription status (only relevant for monthly plan) */
@@ -58,6 +60,7 @@ const userSchema = new Schema<IUser>(
     // ── Billing fields ────────────────────────────────────────────────────────
     planId: { type: Schema.Types.ObjectId, ref: 'Plan', default: null },
     creditsRemaining: { type: Number, default: 2, min: 0 },
+    signaturesUsed: { type: Number, default: 0, min: 0 },
     stripeCustomerId: { type: String, default: null, sparse: true },
     subscriptionStatus: {
       type: String,

@@ -22,6 +22,11 @@ export interface BillingAwareRequest extends AuthenticatedRequest {
   creditDeducted: boolean;
 }
 
+/** Extended request carrying signature-allowance state */
+export interface SignatureAwareRequest extends AuthenticatedRequest {
+  signatureConsumed: boolean;
+}
+
 // ── requireCredits ───────────────────────────────────────────────────────────
 
 /**
@@ -133,5 +138,37 @@ export async function requireAutoFix(
     return;
   }
 
+  next();
+}
+
+// ── requireSignature ─────────────────────────────────────────────────────────
+
+/**
+ * Consumes 1 signature from the user's plan allowance before signing.
+ * Returns 402 if the plan blocks signatures (free) or the limit is exhausted.
+ * Attaches `signatureConsumed: true` so the controller can restore on failure.
+ */
+export async function requireSignature(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const { userId } = req as AuthenticatedRequest;
+
+  const result = await billingService.consumeSignature(userId).catch(() => null);
+
+  if (!result || !result.allowed) {
+    const status = await billingService.getUserBillingStatus(userId).catch(() => null);
+
+    const message =
+      status?.signatureLimit === 0
+        ? 'Assinatura eletrônica não está disponível no seu plano atual. Faça upgrade do seu plano para assinar documentos.'
+        : 'Você atingiu o limite de assinaturas do seu plano. Faça upgrade para assinar mais documentos.';
+
+    res.status(402).json(ApiResponse.error(message, 402));
+    return;
+  }
+
+  (req as SignatureAwareRequest).signatureConsumed = true;
   next();
 }
